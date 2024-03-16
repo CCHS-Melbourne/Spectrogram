@@ -20,9 +20,9 @@ from machine import Pin
 
 if os.uname().machine.count("ESP32"):
     # ======= I2S CONFIGURATION =======
-    SCK_PIN = 32
-    WS_PIN = 25
-    SD_PIN = 12
+    SCK_PIN = 9
+    WS_PIN = 16
+    SD_PIN = 8
     I2S_ID = 0
     BUFFER_LENGTH_IN_BYTES = 40000
     # ======= I2S CONFIGURATION =======
@@ -44,27 +44,15 @@ RECORDING_SIZE_IN_BYTES = (
     RECORD_TIME_IN_SECONDS * SAMPLE_RATE_IN_HZ * WAV_SAMPLE_SIZE_IN_BYTES * NUM_CHANNELS
 )
 
-async def record_wav_to_sdcard(audio_in, wav):
+async def get_mic_audio_samples(audio_in, wav):
     sreader = asyncio.StreamReader(audio_in)
-
-    # create header for WAV file and write to SD card
-    wav_header = create_wav_header(
-        SAMPLE_RATE_IN_HZ,
-        WAV_SAMPLE_SIZE_IN_BITS,
-        NUM_CHANNELS,
-        SAMPLE_RATE_IN_HZ * RECORD_TIME_IN_SECONDS,
-    )
-    num_bytes_written = wav.write(wav_header)
 
     # allocate sample array
     # memoryview used to reduce heap allocation
     mic_samples = bytearray(10000)
     mic_samples_mv = memoryview(mic_samples)
 
-    num_sample_bytes_written_to_wav = 0
-
     # continuously read audio samples from I2S hardware
-    # and write them to a WAV file stored on a SD card
     print("Recording size: {} bytes".format(RECORDING_SIZE_IN_BYTES))
     print("==========  START RECORDING ==========")
     while num_sample_bytes_written_to_wav < RECORDING_SIZE_IN_BYTES:
@@ -75,25 +63,28 @@ async def record_wav_to_sdcard(audio_in, wav):
             num_bytes_to_write = min(
                 num_bytes_read_from_mic, RECORDING_SIZE_IN_BYTES - num_sample_bytes_written_to_wav
             )
-            num_bytes_written = wav.write(mic_samples_mv[:num_bytes_to_write])
-            num_sample_bytes_written_to_wav += num_bytes_written
 
-    print("==========  DONE RECORDING ==========")
     # cleanup
     audio_in.deinit()
 
 
-async def another_task(name):
+async def spectrogram(name):
     while True:
         await asyncio.sleep(urandom.randrange(2, 5))
-        print("{} woke up".format(name))
+        print("{} woke spectrogram up".format(name))
+        time.sleep_ms(10)  # simulates task doing something
+
+async def colorchord(name):
+    while True:
+        await asyncio.sleep(urandom.randrange(2, 5))
+        print("{} woke colorchord up".format(name))
         time.sleep_ms(10)  # simulates task doing something
 
 
 async def main(audio_in, wav):
-    play = asyncio.create_task(record_wav_to_sdcard(audio_in, wav))
-    task_a = asyncio.create_task(another_task("task a"))
-    task_b = asyncio.create_task(another_task("task b"))
+    mic_record = asyncio.create_task(get_mic_audio_samples(audio_in, wav))
+    spectrogram = asyncio.create_task(spectrogram("Hank's Magic"))
+    colorchord = asyncio.create_task(colorchord("CNLohr's magic"))
 
     # keep the event loop active
     while True:
