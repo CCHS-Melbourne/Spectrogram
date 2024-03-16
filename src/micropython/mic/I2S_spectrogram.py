@@ -20,9 +20,9 @@ from machine import Pin
 
 if os.uname().machine.count("ESP32"):
     # ======= I2S CONFIGURATION =======
-    SCK_PIN = 9
-    WS_PIN = 16
-    SD_PIN = 8
+    SCK_PIN = 5
+    WS_PIN = 12
+    SD_PIN = 4
     I2S_ID = 0
     BUFFER_LENGTH_IN_BYTES = 40000
     # ======= I2S CONFIGURATION =======
