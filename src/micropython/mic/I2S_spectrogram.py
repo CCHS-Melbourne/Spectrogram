@@ -10,7 +10,7 @@
 # - samples will be continuously written to the WAV file
 #   for the specified amount of time
 #
-# uasyncio version
+# uasyncio 
 
 import os
 import time
