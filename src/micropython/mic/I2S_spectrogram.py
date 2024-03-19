@@ -20,9 +20,9 @@ from machine import Pin
 
 if os.uname().machine.count("ESP32"):
     # ======= I2S CONFIGURATION =======
+    SD_PIN = 4
     SCK_PIN = 5
     WS_PIN = 12
-    SD_PIN = 4
     I2S_ID = 0
     BUFFER_LENGTH_IN_BYTES = 40000
     # ======= I2S CONFIGURATION =======
@@ -40,33 +40,32 @@ SAMPLE_RATE_IN_HZ = 22050
 format_to_channels = {I2S.MONO: 1, I2S.STEREO: 2}
 NUM_CHANNELS = format_to_channels[FORMAT]
 WAV_SAMPLE_SIZE_IN_BYTES = WAV_SAMPLE_SIZE_IN_BITS // 8
-RECORDING_SIZE_IN_BYTES = (
-    RECORD_TIME_IN_SECONDS * SAMPLE_RATE_IN_HZ * WAV_SAMPLE_SIZE_IN_BYTES * NUM_CHANNELS
-)
+RECORDING_SIZE_IN_BYTES = (RECORD_TIME_IN_SECONDS * SAMPLE_RATE_IN_HZ * WAV_SAMPLE_SIZE_IN_BYTES * NUM_CHANNELS)
 
-async def get_mic_audio_samples(audio_in, wav):
+async def get_mic_audio_samples(audio_in):
     sreader = asyncio.StreamReader(audio_in)
 
-    # allocate sample array
-    # memoryview used to reduce heap allocation
     mic_samples = bytearray(10000)
     mic_samples_mv = memoryview(mic_samples)
-
-    # continuously read audio samples from I2S hardware
-    print("Recording size: {} bytes".format(RECORDING_SIZE_IN_BYTES))
+    
+    num_sample_bytes_written_to_wav = 0
+    
     print("==========  START RECORDING ==========")
     while num_sample_bytes_written_to_wav < RECORDING_SIZE_IN_BYTES:
-        # read samples from the I2S peripheral
         num_bytes_read_from_mic = await sreader.readinto(mic_samples_mv)
-        # write samples to WAV file
         if num_bytes_read_from_mic > 0:
             num_bytes_to_write = min(
                 num_bytes_read_from_mic, RECORDING_SIZE_IN_BYTES - num_sample_bytes_written_to_wav
             )
-
-    # cleanup
-    audio_in.deinit()
-
+            # Write samples to WAV file
+            # Implementation needed here
+            # For now, let's just increment the counter
+            num_sample_bytes_written_to_wav += num_bytes_to_write  # Increment counter
+            
+    print("==========  DONE RECORDING ==========")
+    print(num_bytes_read_from_mic)
+    print(mic_samples_mv.hex())
+    audio_in.deinit()  # Cleanup
 
 async def spectrogram(name):
     while True:
@@ -80,16 +79,11 @@ async def colorchord(name):
         print("{} woke colorchord up".format(name))
         time.sleep_ms(10)  # simulates task doing something
 
+async def main(audio_in):
+    mic_record = asyncio.create_task(get_mic_audio_samples(audio_in))
 
-async def main(audio_in, wav):
-    mic_record = asyncio.create_task(get_mic_audio_samples(audio_in, wav))
-    spectrogram = asyncio.create_task(spectrogram("Hank's Magic"))
-    colorchord = asyncio.create_task(colorchord("CNLohr's magic"))
-
-    # keep the event loop active
     while True:
         await asyncio.sleep_ms(10)
-
 
 try:
     audio_in = I2S(
@@ -104,10 +98,9 @@ try:
         ibuf=BUFFER_LENGTH_IN_BYTES,
     )
 
-    asyncio.run(main(audio_in, wav))
+    asyncio.run(main(audio_in))
+    
 except (KeyboardInterrupt, Exception) as e:
     print("Exception {} {}\n".format(type(e).__name__, e))
 finally:
-    # cleanup
-    audio_in.deinit()
-    ret = asyncio.new_event_loop()  # Clear retained uasyncio state
+    audio_in.deinit()  # Cleanup
