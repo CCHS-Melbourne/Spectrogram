@@ -31,7 +31,7 @@ else:
     print("Warning: program not tested with this board")
 
 # ======= AUDIO CONFIGURATION =======
-RECORD_TIME_IN_SECONDS = 10
+RECORD_TIME_IN_SECONDS = 0.1
 WAV_SAMPLE_SIZE_IN_BITS = 16
 FORMAT = I2S.MONO
 SAMPLE_RATE_IN_HZ = 22050
