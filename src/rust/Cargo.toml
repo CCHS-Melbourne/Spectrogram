@@ -16,8 +16,6 @@ esp-backtrace = { version = "0.11", features = [
 esp-hal = { version = "0.16", features = [ "esp32c6", "embassy", "embassy-time-timg0", "embassy-executor-thread", "async" ] }
 esp-println = { version = "0.9", features = ["esp32c6"] }
 embedded-io-async = "0.6"
-embassy-sync = "0.5"
-static_cell = { version = "2", features = ["nightly"] }
 
 [profile.dev]
 # Rust debug is too slow. 

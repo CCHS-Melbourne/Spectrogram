@@ -18,37 +18,37 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
+use core::fmt::Write;
 use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl, dma::{Dma, DmaPriority}, dma_buffers, embassy, gpio::IO, i2s::{asynch::*, DataFormat, I2s, Standard}, peripherals::{Peripherals, UART0}, prelude::*, timer::TimerGroup, Uart, UartTx
+    clock::ClockControl,
+    dma::{Dma, DmaPriority},
+    dma_buffers, embassy,
+    gpio::IO,
+    i2s::{asynch::*, DataFormat, I2s, Standard},
+    peripherals::{Peripherals, UART0},
+    prelude::*,
+    timer::TimerGroup,
+    uart::{Uart, UartTx}
 };
-use esp_println::println;
 
+// rx_fifo_full_threshold
+const READ_BUF_SIZE: usize = 64;
 
-// #[embassy_executor::task]
-// async fn writer(
-//     mut tx: UartTx<'static, UART0>,
-// ) {
-//     use core::fmt::Write;
-//     embedded_io_async::Write::write(
-//         &mut tx,
-//         b"Hello async serial. Enter something ended with EOT (CTRL-D).\r\n",
-//     )
-//     .await
-//     .unwrap();
-
-//     embedded_io_async::Write::flush(&mut tx).await.unwrap();
-//     loop {
-//         write!(&mut tx, "\r\n-- received {} bytes --\r\n", bytes_read).unwrap();
-//         embedded_io_async::Write::flush(&mut tx).await.unwrap();
-//     }
-// }
+#[embassy_executor::task]
+async fn writer(
+    mut tx: UartTx<'static, UART0>,
+    data: [u8; 5000]
+) {
+    loop {
+        write!(&mut tx, "{:?}", &data).unwrap();
+        embedded_io_async::Write::flush(&mut tx).await.unwrap();
+    }
+}
 
 #[main]
-async fn main(_spawner: Spawner) {
-    println!("Init!");
-
+async fn main(spawner: Spawner) {
     let peripherals = Peripherals::take();
     let system = peripherals.SYSTEM.split();
     let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
@@ -80,11 +80,6 @@ async fn main(_spawner: Spawner) {
         &clocks,
     );
 
-    #[cfg(esp32)]
-    {
-        i2s.with_mclk(io.pins.gpio0);
-    }
-
     let i2s_rx = i2s
         .i2s_rx
         .with_bclk(io.pins.gpio2)
@@ -92,33 +87,20 @@ async fn main(_spawner: Spawner) {
         .with_din(io.pins.gpio5)
         .build();
 
-    let buffer = rx_buffer;
+    let i2s_buffer = rx_buffer;
     let mut uart0 = Uart::new(peripherals.UART0, &clocks);
-    println!("Start");
 
-    let mut data = [0u8; 5000];
+    uart0
+        .set_rx_fifo_full_threshold(READ_BUF_SIZE as u16)
+        .unwrap();
+    let (tx,_rx) = uart0.split();
 
-    // rx_fifo_full_threshold
-    const READ_BUF_SIZE: usize = 64;
+    let mut i2s_data = [0u8; 5000];
+    let mut transaction = i2s_rx.read_dma_circular_async(i2s_buffer).unwrap();
 
-    let mut transaction = i2s_rx.read_dma_circular_async(buffer).unwrap();
+    spawner.spawn(writer(tx, i2s_data)).ok(); // FIXME: Start with all 0s? Does not sound right :/
 
-    // uart0
-    //     .set_rx_fifo_full_threshold(READ_BUF_SIZE as u16)
-    //     .unwrap();
-
-    // let (tx, rx) = uart0.split();
-    // let signal = &*make_static!(Signal::new());
-    
     loop {
-        let _avail = transaction.available().await;
-//        println!("available {}", avail);
-
-        let _count = transaction.pop(&mut data).await.unwrap();
-/*        print!(
-            "{:x?}",
-            &data[0..4080]
-        );
-*/
+        let _i2s_bytes_read = transaction.pop(&mut i2s_data).await.unwrap();
     }
 }
