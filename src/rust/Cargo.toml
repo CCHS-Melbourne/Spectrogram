@@ -13,13 +13,11 @@ esp-backtrace = { version = "0.11", features = [
     "panic-handler",
     "println",
 ] }
-esp-hal = { version = "0.16", features = [ "esp32c6", "embassy", "embassy-time-timg0", "embassy-executor-thread", "async" ] }
+esp-hal = { version = "0.16", features = [ "esp32c6", "embassy", "embassy-time-timg0", "embassy-executor-thread", "async", "embedded-io-async" ] }
 esp-println = { version = "0.9", features = ["esp32c6"] }
 embedded-io-async = "0.6"
 
 [profile.dev]
-# Rust debug is too slow. 
-# For debug builds always builds with some optimization
 opt-level = "s"
 
 [profile.release]
