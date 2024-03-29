@@ -67,15 +67,13 @@ async fn main(_spawner: Spawner) {
         .with_din(io.pins.gpio5)
         .build();
 
-    let i2s_buffer = dma_rx_buffer;
-
     // UART settings
     let uart0 = Uart::new(peripherals.UART0, &clocks);
     let (mut tx,_rx) = uart0.split();
 
     // I2S transactions to DMA buffers
     let mut i2s_data = [0u8; 5000];
-    let mut transaction = i2s_rx.read_dma_circular_async(i2s_buffer).unwrap();
+    let mut transaction = i2s_rx.read_dma_circular_async(dma_rx_buffer).unwrap();
 
     // Spawn tasks
     // spawner.spawn(writer(tx, i2s_data)).ok(); // FIXME: Start with all 0s? Does not sound right :/
