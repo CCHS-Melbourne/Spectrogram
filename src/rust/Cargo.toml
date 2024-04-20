@@ -8,14 +8,13 @@ license = "GPLv3"
 [dependencies]
 embassy-executor = { version = "0.5", features = ["task-arena-size-8192"] }
 esp-backtrace = { version = "0.11", features = [
-    "esp32c6",
+    "esp32s3",
     "exception-handler",
     "panic-handler",
     "println",
 ] }
-esp-hal = { version = "0.16", features = [ "esp32c6", "embassy", "embassy-time-timg0", "embassy-executor-thread", "async", "embedded-io-async" ] }
-#esp-hal = { git = "https://github.com/esp-rs/esp-hal", branch = "main", features = [ "esp32c6", "embassy", "embassy-time-timg0", "embassy-executor-thread", "async", "embedded-io-async" ] }
-esp-println = { version = "0.9", features = ["esp32c6"] }
+esp-hal = { version = "0.16", features = [ "esp32s3", "embassy", "embassy-time-timg0", "embassy-executor-thread", "async", "embedded-io-async" ] }
+esp-println = { version = "0.9", features = ["esp32s3"] }
 embedded-io-async = "0.6"
 
 [profile.dev]
