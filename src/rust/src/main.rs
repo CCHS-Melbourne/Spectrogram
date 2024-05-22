@@ -30,7 +30,7 @@ use esp_hal::{
 
 #[main]
 async fn main(_spawner: Spawner) {
-/*
+
     // Prepare all the peripherals and clocks
     let peripherals = Peripherals::take();
     let system = SystemControl::new(peripherals.SYSTEM);
@@ -44,8 +44,8 @@ async fn main(_spawner: Spawner) {
 
     // Set DMA buffers
     let (_, mut tx_descriptors, dma_rx_buffer, mut rx_descriptors) = dma_buffers!(0, 4092 * 4);
-*/
-/*
+
+
     // I2S settings
     let i2s = I2s::new(
         peripherals.I2S0,
@@ -67,8 +67,8 @@ async fn main(_spawner: Spawner) {
         .with_ws(io.pins.gpio4)
         .with_din(io.pins.gpio5)
         .build();
-*/
-/*
+
+
     // UART settings
     let uart0 = Uart::new(peripherals.UART0, &clocks);
     let (mut tx, _rx) = uart0.split();
@@ -80,11 +80,11 @@ async fn main(_spawner: Spawner) {
     // Spawn tasks
     // spawner.spawn(writer(tx, i2s_data)).ok(); // FIXME: Start with all 0s? Does not sound right :/
     // spawner.spawn(leds());                    // TODO: Future concurrent task
-*/
 
-/*    loop {
+
+    loop {
         let _i2s_bytes_read = transaction.pop(&mut i2s_data).await.unwrap();
         tx.write_all(&i2s_data).unwrap();
     }
-*/
+
 }
