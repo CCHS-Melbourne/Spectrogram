@@ -13,7 +13,7 @@ esp-backtrace = { version = "0.11", features = [
     "panic-handler",
     "println",
 ] }
-esp-hal = { git = "https://github.com/esp-rs/esp-hal", branch = "main", features = [ "esp32s3", "embassy", "embassy-time-timg0", "embedded-io-async", "async" ] }
+esp-hal = { git = "https://github.com/esp-rs/esp-hal", branch = "main", features = [ "debug", "esp32s3", "embassy", "embassy-time-timg0", "embedded-io-async", "async" ] }
 esp-println = { version = "0.9", features = ["esp32s3"] }
 embedded-io = "0.6"
 
