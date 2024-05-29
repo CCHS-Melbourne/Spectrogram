@@ -1,0 +1,29 @@
+[package]
+name = "rust"
+version = "0.1.0"
+authors = ["brainstorm <brainstorm@nopcode.org>"]
+edition = "2021"
+license = "GPLv3"
+
+[dependencies]
+esp-backtrace = { version = "0.11", features = [
+    "esp32s3",
+    "exception-handler",
+    "panic-handler",
+    "println",
+] }
+esp-hal = { git = "https://github.com/esp-rs/esp-hal", branch = "main", features = [ "debug", "esp32s3", "embedded-io", ] }
+esp-println = { version = "0.9", features = ["esp32s3"] }
+embedded-io = "0.6"
+
+[profile.dev]
+opt-level = "s"
+
+[profile.release]
+codegen-units = 1 # LLVM can perform better optimizations using a single thread
+debug = 2
+debug-assertions = false
+incremental = false
+lto = 'fat'
+opt-level = 's'
+overflow-checks = false
