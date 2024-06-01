@@ -2,14 +2,13 @@
 #![no_main]
 
 use embassy_executor::Spawner;
-use embedded_io::Write;
 use esp_backtrace as _;
 use esp_hal::{
     clock::ClockControl,
     dma::{Dma, DmaPriority},
     dma_buffers, embassy,
     gpio::Io,
-    i2s::{asynch::I2sReadDmaAsync, I2sReadDma, DataFormat, I2s, Standard},
+    i2s::{DataFormat, I2s, Standard, asynch::I2sReadDmaAsync},
     peripherals::Peripherals,
     prelude::*,
     system::SystemControl,
@@ -34,7 +33,7 @@ async fn main(_spawner: Spawner) {
     embassy::init(&clocks, timg0);
 
     // Set DMA buffers
-    let (_, mut tx_descriptors, mut dma_rx_buffer, mut rx_descriptors) = dma_buffers!(0, I2S_BYTES * 4);
+    let (_, mut tx_descriptors, dma_rx_buffer, mut rx_descriptors) = dma_buffers!(0, I2S_BYTES * 4);
 
     // I2S settings
     let i2s = I2s::new(
@@ -42,7 +41,7 @@ async fn main(_spawner: Spawner) {
         Standard::Philips,
         DataFormat::Data32Channel32,
         8000.Hz(),
-        dma_channel.configure(
+        dma_channel.configure_for_async(
             false,
             &mut tx_descriptors,
             &mut rx_descriptors,
@@ -51,7 +50,7 @@ async fn main(_spawner: Spawner) {
         &clocks,
     );
 
-    let mut i2s_rx = i2s
+    let i2s_rx = i2s
         .i2s_rx
         .with_bclk(io.pins.gpio2)
         .with_ws(io.pins.gpio4)
@@ -67,13 +66,10 @@ async fn main(_spawner: Spawner) {
 
     // I2S transactions to DMA buffers
     let mut i2s_data = [0u8; I2S_BYTES];
-    //let mut transaction = i2s_rx.read_dma_circular_async(dma_rx_buffer).unwrap();
-    let mut transaction = i2s_rx.read_dma_circular(&mut dma_rx_buffer).unwrap();
+    let mut transaction = i2s_rx.read_dma_circular_async(dma_rx_buffer).unwrap();
 
     loop {
-        //let _i2s_bytes_read = transaction.pop(&mut i2s_data).await.unwrap();
-        let _i2s_bytes_read = transaction.pop(&mut i2s_data).unwrap();
-
-        uart_tx.write_all(&i2s_data).unwrap();
+        let i2s_bytes_read = transaction.pop(&mut i2s_data).await.unwrap();
+        uart_tx.write_async(&i2s_data[..i2s_bytes_read]).await.unwrap();
     }
 }
