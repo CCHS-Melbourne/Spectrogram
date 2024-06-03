@@ -1,5 +1,5 @@
 [package]
-name = "rust"
+name = "pancake-leds"
 version = "0.1.0"
 authors = ["brainstorm <brainstorm@nopcode.org>"]
 edition = "2021"
@@ -13,9 +13,14 @@ esp-backtrace = { version = "0.11", features = [
     "panic-handler",
     "println",
 ] }
-esp-hal = { git = "https://github.com/esp-rs/esp-hal", branch = "main", features = [ "debug", "esp32s3", "embassy", "embassy-time-timg0", "embedded-io-async", "async" ] }
+esp-hal = { git = "https://github.com/esp-rs/esp-hal", branch = "main", features = [ "esp32s3", "embassy", "embassy-time-timg0", "embedded-io-async", "async" ] }
+#esp-hal = { features = [ "esp32s3", "embassy", "embassy-time-timg0", "embedded-io-async", "async" ] }
 esp-println = { version = "0.9", features = ["esp32s3"] }
 embedded-io = "0.6"
+microfft = { version = "0.6", default-features = false, features = [ "size-4096" ] }
+smart-leds = "0.4"
+esp-hal-smartled = { git = "https://github.com/esp-rs/esp-hal", branch = "main", version = "0.10.0", features = ["esp32s3"] }
+#spectrum-analyzer = { version = "1.5.0", features = ["no-std"] }
 
 [profile.dev]
 opt-level = "s"

@@ -4,23 +4,52 @@
 use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl,
-    dma::{Dma, DmaPriority},
-    dma_buffers, embassy,
-    gpio::Io,
-    i2s::{DataFormat, I2s, Standard, asynch::I2sReadDmaAsync},
-    peripherals::Peripherals,
-    prelude::*,
-    system::SystemControl,
-    timer::timg::TimerGroup,
-    uart::{config::Config, TxRxPins, Uart},
+    clock::{ClockControl, Clocks}, delay::Delay, dma::{Dma, DmaPriority}, dma_buffers, embassy, gpio::Io, i2s::{asynch::I2sReadDmaAsync, DataFormat, I2s, Standard}, peripherals::Peripherals, prelude::*, rmt::Rmt, system::SystemControl, timer::timg::TimerGroup, uart::{config::Config, TxRxPins, Uart}
 };
 
+use esp_hal_smartled::{smartLedBuffer, SmartLedsAdapter};
+use smart_leds::{self, brightness, gamma, hsv::{hsv2rgb, Hsv}, SmartLedsWrite};
+
+// use pancake_leds::fft::compute_fft;
+// use pancake_leds::util::convert_u8_to_f32_array;
 // DMA buffer size
 const I2S_BYTES: usize = 4092;
 
+#[embassy_executor::task]
+async fn led_control(peripherals: &Rmt<'_>, io: &Io, clocks: &Clocks<'static>) {
+    let rmt = Rmt::new_async(peripherals.RMT, 80.MHz(), &clocks).unwrap();
+
+    // LED control
+    let rmt_buffer = smartLedBuffer!(1);
+    let led = SmartLedsAdapter::new(rmt.channel0, io.pins.gpio38, rmt_buffer, &clocks);
+    
+    let delay = Delay::new(&clocks);
+    let mut color = Hsv {
+        hue: 0,
+        sat: 255,
+        val: 255,
+    };
+    let mut data;
+
+    loop {
+        // Iterate over the rainbow!
+        for hue in 0..=255 {
+            color.hue = hue;
+            // Convert from the HSV color space (where we can easily transition from one
+            // color to the other) to the RGB color space that we can then send to the LED
+            data = [hsv2rgb(color)];
+            // When sending to the LED, we do a gamma correction first (see smart_leds
+            // documentation for details) and then limit the brightness to 10 out of 255 so
+            // that the output it's not too bright.
+            led.write(brightness(gamma(data.iter().cloned()), 10))
+                .unwrap();
+            delay.delay_millis(20);
+        }
+    }
+}
+
 #[main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
     // Prepare all the peripherals and clocks
     let peripherals = Peripherals::take();
     let system = SystemControl::new(peripherals.SYSTEM);
@@ -31,6 +60,9 @@ async fn main(_spawner: Spawner) {
     let dma_channel = dma.channel0;
 
     embassy::init(&clocks, timg0);
+
+    // LED task
+    spawner.spawn(led_control(&peripherals.RMT, &io, &clocks)).unwrap();
 
     // Set DMA buffers
     let (_, mut tx_descriptors, dma_rx_buffer, mut rx_descriptors) = dma_buffers!(0, I2S_BYTES * 4);
@@ -70,6 +102,9 @@ async fn main(_spawner: Spawner) {
 
     loop {
         let i2s_bytes_read = transaction.pop(&mut i2s_data).await.unwrap();
-        uart_tx.write_async(&i2s_data[..i2s_bytes_read]).await.unwrap();
+        let audio_data = &i2s_data[..i2s_bytes_read];
+        uart_tx.write_async(&audio_data).await.unwrap();
+        // let mut audio_data_for_fft = convert_u8_to_f32_array(&mut audio_data);
+        // compute_fft(&mut audio_data_for_fft);
     }
 }
