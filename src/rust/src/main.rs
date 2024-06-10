@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+use core::borrow::Borrow;
+
 use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::{
@@ -16,7 +18,7 @@ use smart_leds::{self, brightness, gamma, hsv::{hsv2rgb, Hsv}, SmartLedsWrite};
 const I2S_BYTES: usize = 4092;
 
 #[embassy_executor::task]
-async fn led_control(peripherals: &Rmt<'_>, io: &Io, clocks: &Clocks<'static>) {
+async fn led_control(peripherals: &Rmt<'static>, io: &Io, clocks: &Clocks<'static>) {
     let rmt = Rmt::new_async(peripherals.RMT, 80.MHz(), &clocks).unwrap();
 
     // LED control
@@ -62,7 +64,8 @@ async fn main(spawner: Spawner) {
     embassy::init(&clocks, timg0);
 
     // LED task
-    spawner.spawn(led_control(&peripherals.RMT, &io, &clocks)).unwrap();
+    let rmt = peripherals.RMT.borrow();
+    spawner.spawn(led_control(&rmt, &io, &clocks)).unwrap();
 
     // Set DMA buffers
     let (_, mut tx_descriptors, dma_rx_buffer, mut rx_descriptors) = dma_buffers!(0, I2S_BYTES * 4);
