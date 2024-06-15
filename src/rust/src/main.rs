@@ -6,9 +6,10 @@ use core::borrow::Borrow;
 use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::{
-    clock::{ClockControl, Clocks}, delay::Delay, dma::{Dma, DmaPriority}, dma_buffers, embassy, gpio::Io, i2s::{asynch::I2sReadDmaAsync, DataFormat, I2s, Standard}, peripherals::Peripherals, prelude::*, rmt::Rmt, system::SystemControl, timer::timg::TimerGroup, uart::{config::Config, TxRxPins, Uart}
+    clock::{ClockControl, Clocks}, delay::Delay, dma::{Dma, DmaPriority}, dma_buffers, gpio::Io, i2s::{asynch::I2sReadDmaAsync, DataFormat, I2s, Standard}, peripherals::Peripherals, prelude::*, rmt::Rmt, system::SystemControl, timer::timg::TimerGroup, uart::{config::Config, Uart}
 };
 
+use esp_hal_embassy;
 use esp_hal_smartled::{smartLedBuffer, SmartLedsAdapter};
 use smart_leds::{self, brightness, gamma, hsv::{hsv2rgb, Hsv}, SmartLedsWrite};
 
@@ -61,7 +62,7 @@ async fn main(spawner: Spawner) {
     let dma = Dma::new(peripherals.DMA);
     let dma_channel = dma.channel0;
 
-    embassy::init(&clocks, timg0);
+    esp_hal_embassy::init(&clocks, timg0);
 
     // LED task
     let rmt = peripherals.RMT.borrow();
@@ -95,9 +96,7 @@ async fn main(spawner: Spawner) {
     // UART settings, egress bytes as fast as possible
     let uart_config = Config::default().baudrate(921_600);
     // On Lolin S3 1.0.0, no ::default() for this
-    let uart_pins = Some(TxRxPins::new_tx_rx(io.pins.gpio43, io.pins.gpio44));
-    let uart0 = Uart::new_async_with_config(peripherals.UART0, uart_config, uart_pins, &clocks);
-    let (mut uart_tx, _rx) = uart0.split();
+    let mut uart0 = Uart::new_async_with_config(peripherals.UART0, uart_config, &clocks, io.pins.gpio43, io.pins.gpio44).unwrap();
 
     // I2S transactions to DMA buffers
     let mut i2s_data = [0u8; I2S_BYTES];
@@ -106,7 +105,7 @@ async fn main(spawner: Spawner) {
     loop {
         let i2s_bytes_read = transaction.pop(&mut i2s_data).await.unwrap();
         let audio_data = &i2s_data[..i2s_bytes_read];
-        uart_tx.write_async(&audio_data).await.unwrap();
+        uart0.write_async(&audio_data).await.unwrap();
         // let mut audio_data_for_fft = convert_u8_to_f32_array(&mut audio_data);
         // compute_fft(&mut audio_data_for_fft);
     }
