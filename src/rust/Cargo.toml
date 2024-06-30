@@ -23,9 +23,13 @@ smart-leds = "0.4"
 esp-hal-smartled = { git = "https://github.com/esp-rs/esp-hal", branch = "main", version = "0.11.0", features = ["esp32s3"] }
 #spectrum-analyzer = { version = "1.5.0", features = ["no-std"] }
 
-[patch.'https://github.com/esp-rs/esp-hal']
+[patch."https://github.com/esp-rs/esp-hal"]
 esp-hal = { path = "../../../esp-hal/esp-hal" }
 esp-hal-smartled = { path = "../../../esp-hal/esp-hal-smartled" }
+
+[patch."crates-io"]
+smart-leds = { path = "../../../smart-leds" }
+smart-leds-trait = { path = "../../../smart-leds-trait" }
 
 [profile.dev]
 opt-level = "s"

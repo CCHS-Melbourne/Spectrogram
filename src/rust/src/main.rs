@@ -1,13 +1,10 @@
 #![no_std]
 #![no_main]
 
-use core::borrow::Borrow;
-
 use embassy_executor::Spawner;
 use esp_backtrace as _;
 use esp_hal::{
-    clock::{ClockControl, Clocks}, delay::Delay, dma::{Dma, DmaPriority}, dma_buffers, gpio::Io, i2s::{asynch::I2sReadDmaAsync, DataFormat, I2s, Standard}, peripherals::Peripherals, prelude::*, rmt::Rmt, system::SystemControl, timer::timg::TimerGroup, uart::{config::Config, Uart}
-};
+    clock::{ClockControl, Clocks}, delay::Delay, dma::{Dma, DmaPriority}, dma_buffers, gpio::Io, i2s::{asynch::I2sReadDmaAsync, DataFormat, I2s, Standard}, peripherals::Peripherals, prelude::*, rmt::Rmt, system::SystemControl, timer::timg::TimerGroup, uart::{config::Config, Uart}, Mode};
 
 use esp_hal_embassy;
 use esp_hal_smartled::{smartLedBuffer, SmartLedsAdapter};
@@ -17,39 +14,6 @@ use smart_leds::{self, brightness, gamma, hsv::{hsv2rgb, Hsv}, SmartLedsWrite};
 // use pancake_leds::util::convert_u8_to_f32_array;
 // DMA buffer size
 const I2S_BYTES: usize = 4092;
-
-#[embassy_executor::task]
-async fn led_control(peripherals: &Rmt<'static>, io: &Io, clocks: &Clocks<'static>) {
-    let rmt = Rmt::new_async(peripherals.RMT, 80.MHz(), &clocks).unwrap();
-
-    // LED control
-    let rmt_buffer = smartLedBuffer!(1);
-    let led = SmartLedsAdapter::new(rmt.channel0, io.pins.gpio38, rmt_buffer, &clocks);
-    
-    let delay = Delay::new(&clocks);
-    let mut color = Hsv {
-        hue: 0,
-        sat: 255,
-        val: 255,
-    };
-    let mut data;
-
-    loop {
-        // Iterate over the rainbow!
-        for hue in 0..=255 {
-            color.hue = hue;
-            // Convert from the HSV color space (where we can easily transition from one
-            // color to the other) to the RGB color space that we can then send to the LED
-            data = [hsv2rgb(color)];
-            // When sending to the LED, we do a gamma correction first (see smart_leds
-            // documentation for details) and then limit the brightness to 10 out of 255 so
-            // that the output it's not too bright.
-            led.write(brightness(gamma(data.iter().cloned()), 10))
-                .unwrap();
-            delay.delay_millis(20);
-        }
-    }
-}
 
 #[main]
 async fn main(spawner: Spawner) {
@@ -61,12 +25,46 @@ async fn main(spawner: Spawner) {
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
     let dma = Dma::new(peripherals.DMA);
     let dma_channel = dma.channel0;
+    let rmt = peripherals.RMT;
 
     esp_hal_embassy::init(&clocks, timg0);
 
+    // Tasks
+    // Nesting in main due to unresolved Rust upstream TAIT: https://github.com/embassy-rs/embassy/issues/1837#issuecomment-1710537605
+    #[embassy_executor::task]
+    async fn led_control(rmt: Rmt<'_, dyn Mode>, io: &Io, clocks: &Clocks<'static>) {
+        let rmt = Rmt::new_async(rmt, 80.MHz(), &clocks).unwrap();
+
+        // LED control
+        let rmt_buffer = smartLedBuffer!(1);
+        let led = SmartLedsAdapter::new(rmt.channel0, io.pins.gpio38, rmt_buffer, &clocks);
+
+        let delay = Delay::new(&clocks);
+        let mut color = Hsv {
+            hue: 0,
+            sat: 255,
+            val: 255,
+        };
+        let mut data;
+
+        loop {
+            // Iterate over the rainbow!
+            for hue in 0..=255 {
+                color.hue = hue;
+                // Convert from the HSV color space (where we can easily transition from one
+                // color to the other) to the RGB color space that we can then send to the LED
+                data = [hsv2rgb(color)];
+                // When sending to the LED, we do a gamma correction first (see smart_leds
+                // documentation for details) and then limit the brightness to 10 out of 255 so
+                // that the output it's not too bright.
+                led.write(brightness(gamma(data.iter().cloned()), 10)).await;
+                delay.delay_millis(20);
+            }
+        }
+    }
+
     // LED task
-    let rmt = peripherals.RMT.borrow();
-    spawner.spawn(led_control(&rmt, &io, &clocks)).unwrap();
+    spawner.spawn(led_control(rmt, &io, &clocks)).unwrap();
 
     // Set DMA buffers
     let (_, mut tx_descriptors, dma_rx_buffer, mut rx_descriptors) = dma_buffers!(0, I2S_BYTES * 4);
