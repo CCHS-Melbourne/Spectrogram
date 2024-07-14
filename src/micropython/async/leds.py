@@ -1,4 +1,5 @@
 import time
+from random import randint
 from neopixel import NeoPixel
 from machine import Pin
 
@@ -14,11 +15,11 @@ class Leds():
         pass
 
     def blink(self):
-        for round in range(100):
-            self.neopix[0] = (80, 80, 80)
-            time.sleep(0.5)
-            self.neopix[0] = (200, 200, 200)
-            time.sleep(0.5)
+        for round in range(1000):
+            self.neopix[0] = (randint(1,255), randint(1,255), randint(1,255))
+            time.sleep(0.01)
+            self.neopix[0] = (randint(1,255), randint(1,255), randint(1,255))
+            time.sleep(0.01)
             self.neopix.write()
         
     def dance(self):
