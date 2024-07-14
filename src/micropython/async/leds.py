@@ -1,4 +1,4 @@
-import time
+import asyncio
 from random import randint
 from neopixel import NeoPixel
 from machine import Pin
@@ -14,13 +14,13 @@ class Leds():
     def __iter__(self):
         pass
 
-    def blink(self):
+    async def blink(self):
         for round in range(1000):
             self.neopix[0] = (randint(1,255), randint(1,255), randint(1,255))
-            time.sleep(0.01)
+            await asyncio.sleep_ms(50)
             self.neopix[0] = (randint(1,255), randint(1,255), randint(1,255))
-            time.sleep(0.01)
+            await asyncio.sleep_ms(50)
             self.neopix.write()
-        
-    def dance(self):
-        self.blink()
+
+    async def dance(self):
+        await self.blink()

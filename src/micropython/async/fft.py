@@ -1,13 +1,12 @@
-import asyncio
+from ulab import numpy as np
+from ulab import utils as utils
 
-class Leds():
-    def __iter__(self):
-        return 42
+class Fft():
+    async def test():
+        x = np.linspace(0, 10, num=1024)
+        y = np.sin(x)
 
-async def light():
-    leds = Leds()
-    print('waiting for leds')
-    res = await leds  # Retrieve result
-    print('done', res)
+        a = utils.spectrogram(y)
 
-asyncio.run(light())
+        print('original vector:\n', y)
+        print('\nspectrum:\n', a)
