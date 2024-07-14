@@ -2,7 +2,7 @@ from ulab import numpy as np
 from ulab import utils as utils
 
 class Fft():
-    async def test():
+    async def test(self):
         x = np.linspace(0, 10, num=1024)
         y = np.sin(x)
 
