@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+elf = "fw/lolin_s3_ulab_micropython.bin"
+firmware = "fw/lolin_s3_ulab_micropython.bin"
+rfc2217ServerPort = 4000
