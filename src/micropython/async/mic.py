@@ -18,20 +18,10 @@ WS = Pin(4)
 
 class Mic():
     def __init__(self):
-        #>>> m = mic.Mic()
-        #E (37838) i2s_common: i2s_new_channel(867): there should be at least 2 DMA buffers
-        #E (37848) i2s_std: i2s_channel_init_std_mode(204): input parameter 'handle' is NULL
-        #E (37848) i2s_common: i2s_channel_register_event_callback(316): input parameter 'handle' is NULL
-        #E (37858) i2s_common: i2s_channel_enable(1077): input parameter 'handle' is NULL
         #print(len(rawsamples)*2+1024)
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
                               bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
-                              ibuf=len(rawsamples)*10+1024)
-
-        # Set a callback. ``handler`` is called when ``buf`` is emptied (``write`` method) or becomes full (``readinto`` method).  
-        # Setting a callback changes the ``write`` and ``readinto`` methods to non-blocking operation.
-        # ``handler`` is called in the context of the MicroPython scheduler.
-        #self.microphone.irq(self.i2s_handler)
+                              ibuf=len(rawsamples)*10+1024) # FIXME: Just set it to 40000 as the example sketch?
 
     def flat_top_window(N):
         n = np.linspace(0, N, num=N)
@@ -39,7 +29,7 @@ class Mic():
 
     async def mini_wled(self, samples):
         assert (len(samples) == SAMPLE_COUNT)
-        print(samples)
+        # print(samples)
         # TODO: These two lines can be substituted by ulab's utils.spectrogram() ?
         # re, im = np.fft.fft(samples * self.flat_top_window(SAMPLE_COUNT))
         # magnitudes = np.sqrt(re*re + im*im)
@@ -70,41 +60,34 @@ class Mic():
             await sum_and_scale(magnitudes,206,232), # - 10013 Hz
         ]
 
-        print(fftCalc)
+        #print(fftCalc)
         return fftCalc
-
-    async def i2s_handler():
-        '''
-        What to do when buf is emptied or becomes full?
-        '''
-        print("I2S event occurred")
 
 
     async def run(self):
-        led_array = Leds()
+        leds = Leds()
 
-        # https://docs.micropython.org/en/latest/library/machine.I2S.html#class-i2s-inter-ic-sound-bus-protocol
-        #     
-        # swriter = asyncio.StreamWriter(audio_out)
-        # swriter.write(buf)
-        # await swriter.drain()
-        # 
-        # FIXME: First 1024 bytes from the microphone seem garbage (\x00), so we should discard them first
         while True:
             sreader = asyncio.StreamReader(self.microphone)
-            num_bytes_read = await sreader.readinto(rawsamples)
+            _num_bytes_read = await sreader.readinto(rawsamples)
 
-            print(num_bytes_read)
-            print(rawsamples)
-        #assert (num_bytes_read == len(rawsamples))
+            #print(num_bytes_read)
+            #print(rawsamples)
+            #assert (num_bytes_read == len(rawsamples))
 
-        if SAMPLE_SIZE == 8:
-            samples = np.frombuffer(rawsamples, dtype=np.int8)
-        elif SAMPLE_SIZE == 16:
-            samples = np.frombuffer(rawsamples, dtype=np.int16)
-        else:
-            raise NotImplementedError
+            if SAMPLE_SIZE == 8:
+                samples = np.frombuffer(rawsamples, dtype=np.int8)
+            elif SAMPLE_SIZE == 16:
+                samples = np.frombuffer(rawsamples, dtype=np.int16)
+            else:
+                raise NotImplementedError
+    
+            # calculate channels from samples
+            channels = await self.mini_wled(samples)
+            #print(int(channels[0] % 254))
+            # await leds.light(0, (int(channels[0] % 254), 
+            #                      int(channels[8] % 254), 
+            #                      int(channels[15] % 254))
+            #                  )
 
-        # calculate channels from samples
-        channels = await self.mini_wled(samples)
-        print(channels)
+            await leds.light(0, (int(channels[0] % 254), 10, 10))

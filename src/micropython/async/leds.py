@@ -22,5 +22,10 @@ class Leds():
             await asyncio.sleep_ms(50)
             self.neopix.write()
 
+    async def light(self, led_nr, values):
+        self.neopix[led_nr] = values
+        #await asyncio.sleep_ms(50)
+        self.neopix.write()
+
     async def dance(self):
         await self.blink()
