@@ -9,7 +9,9 @@ async def main():
     l = Leds()
     #await asyncio.create_task(m.run())
     #await asyncio.create_task(l.dance())
-    await asyncio.create_task(l.colorHSV(10000, 10, 1))
+    for i in range(65550):
+        await asyncio.create_task(l.show_hsv(100, 10, i+100))
+        #await asyncio.sleep_ms(10)
     # await leds.run_forever()  # Non-terminating method
 try:
     asyncio.run(main())
