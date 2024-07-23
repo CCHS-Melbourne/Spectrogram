@@ -7,11 +7,12 @@ async def main():
     set_global_exception()
     m = Mic()
     l = Leds()
-    #await asyncio.create_task(m.run())
+    await asyncio.create_task(m.run())
     #await asyncio.create_task(l.dance())
-    for i in range(65550):
-        await asyncio.create_task(l.show_hsv(100, 10, i+100))
-        #await asyncio.sleep_ms(10)
+    # for i in range(65550):
+    #     for le in range(15):
+    #         await asyncio.create_task(l.show_hsv(le, 1, 1, i+100))
+    #     #await asyncio.sleep_ms(10)
     # await leds.run_forever()  # Non-terminating method
 try:
     asyncio.run(main())
