@@ -12,7 +12,6 @@ UNPOWER, MINPEAK = lambda x: math.pow(x,1/2), None
 
 class Mic():
     def __init__(self):
-        #print(len(rawsamples)*2+1024)
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
                               bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
                               #ibuf=len(rawsamples)*10+1024) # FIXME: Just set it to 40000 as the example sketch?
@@ -23,7 +22,6 @@ class Mic():
         assert (len(samples) == SAMPLE_COUNT)
         
         magnitudes = utils.spectrogram(samples)
-        #print(magnitudes)
 
         async def sum_and_scale(m, f, t):
             scale = [None if i == 0 else math.sqrt(i)/i for i in range(30)]
@@ -60,10 +58,6 @@ class Mic():
             sreader = asyncio.StreamReader(self.microphone)
             _num_bytes_read = await sreader.readinto(rawsamples)
 
-            #print(num_bytes_read)
-            #print(rawsamples)
-            #assert (num_bytes_read == len(rawsamples))
-
             if SAMPLE_SIZE == 8:
                 samples = np.frombuffer(rawsamples, dtype=np.int8)
             elif SAMPLE_SIZE == 16:
@@ -73,16 +67,7 @@ class Mic():
     
             # calculate channels from samples
             channels = await self.mini_wled(samples)
-            #print(int(channels[0] % 254))
-            # await leds.light(0, (int(channels[0] % 254), 
-            #                      int(channels[8] % 254), 
-            #                      int(channels[15] % 254))
-            #                  )
 
             channels = [UNPOWER(channels[i]) if channels[i] >= 1 else 0 for i in range(len(channels))]
-            # for i in range(65550):
             for i in range(0, 15):
-                #print(i, int(channels[i]))
                 await leds.show_hsv(i, 1, 1, int(channels[i]))
-            #print(channels[8])
-            #await leds.show_hsv(int(channels[8]), 1, 1, 10)
