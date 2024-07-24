@@ -7,7 +7,7 @@ from machine import Pin, I2S
 
 SAMPLE_RATE = 22050 # Hz (WLED is 22050)
 SAMPLE_SIZE = 16
-SAMPLE_COUNT = 1024 # (WLED is 512)
+SAMPLE_COUNT = 2048 # (WLED is 512)
 
 rawsamples = bytearray(SAMPLE_COUNT * SAMPLE_SIZE // 8)
 scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of the FFT
@@ -27,6 +27,7 @@ class Mic():
                               ibuf=8000)
 
 
+    # FIXME: Needs thorough review and optimization, way too slow with 12*3 LEDs as-is
     async def mini_wled(self, samples):
         assert (len(samples) == SAMPLE_COUNT)
         
@@ -34,8 +35,10 @@ class Mic():
         #magnitudes = utils.spectrogram(samples)
 
         async def sum_and_scale(m, f, t):
-            scale = [None if i == 0 else math.sqrt(i)/i for i in range(30)]
-            return sum([m[i] for i in range(f,t+1)]) * scale[t-f+1]
+            #scale = [None if i == 0 else math.sqrt(i)/i for i in range(200)]
+            return sum([m[i]/20 for i in range(f,t+1)])# * scale[t-f+1]
+            #print(len(m), f, t)
+            #return sum([m[i] for i in range(f, t+1)])
         
         fftCalc = [
             await sum_and_scale(magnitudes,1,2), #  22 -   108 Hz
@@ -46,15 +49,37 @@ class Mic():
             await sum_and_scale(magnitudes,17,23), #   -  1012 Hz
             await sum_and_scale(magnitudes,24,33), #   -  1443 Hz
             await sum_and_scale(magnitudes,34,46), #   -  2003 Hz
-            
             await sum_and_scale(magnitudes,47,62), #   -  2692 Hz
-            await sum_and_scale(magnitudes,63,81), #   -  3510 Hz
+            await sum_and_scale(magnitudes,47,52),
+
+            await sum_and_scale(magnitudes,53,62),
+            await sum_and_scale(magnitudes,63,70), #   -  3510 Hz
+            await sum_and_scale(magnitudes,71,81),
             await sum_and_scale(magnitudes,82,103), #  -  4457 Hz
             await sum_and_scale(magnitudes,104,127), # -  5491 Hz
             await sum_and_scale(magnitudes,128,152), # -  6568 Hz
             await sum_and_scale(magnitudes,153,178), # -  7687 Hz
             await sum_and_scale(magnitudes,179,205), # -  8850 Hz
             await sum_and_scale(magnitudes,206,232), # - 10013 Hz
+            await sum_and_scale(magnitudes,206,232), # - 10013 Hz
+
+            await sum_and_scale(magnitudes,233, 300),
+            await sum_and_scale(magnitudes,301,400),
+            await sum_and_scale(magnitudes,401,500),
+            await sum_and_scale(magnitudes,501,600),
+            await sum_and_scale(magnitudes,601,700),
+            await sum_and_scale(magnitudes,701,800),
+            await sum_and_scale(magnitudes,801,900),
+            await sum_and_scale(magnitudes,901,1000),
+            await sum_and_scale(magnitudes,1001,1100),
+            await sum_and_scale(magnitudes,1101,1200),
+
+            await sum_and_scale(magnitudes,1201, 1300),
+            await sum_and_scale(magnitudes,1301,1400),
+            await sum_and_scale(magnitudes,1401,1500),
+            await sum_and_scale(magnitudes,1501,1600),
+            await sum_and_scale(magnitudes,1601,1700),
+            await sum_and_scale(magnitudes,1701,1800),
         ]
 
         return fftCalc
@@ -78,7 +103,7 @@ class Mic():
             channels = await self.mini_wled(samples)
 
             #channels = [UNPOWER(channels[i]) if channels[i] >= 1 else 0 for i in range(len(channels))]
-            for i in range(0, 15):
+            for i in range(0, len(channels)):
                 print(i, channels[i])
                 if channels[i] != float("-inf"):
                     await leds.show_hsv(i, 1, int(channels[i])*8, 5)
