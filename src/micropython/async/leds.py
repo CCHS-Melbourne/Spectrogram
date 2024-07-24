@@ -3,8 +3,8 @@ from random import randint
 from neopixel import NeoPixel
 from machine import Pin
 
-NUM_LEDS = 1
-LEDS_PIN = 38
+NUM_LEDS = 12*3
+LEDS_PIN = 18
 
 class Leds():
     def __init__(self):
@@ -30,9 +30,9 @@ class Leds():
     async def dance(self):
         await self.blink()
 
-    async def show_hsv(self, hue, sat, val):
+    async def show_hsv(self, led_nr, hue, sat, val):
         rgb = await self.colorHSV(hue, sat, val)
-        self.neopix[0] = rgb
+        self.neopix[led_nr] = rgb
         self.neopix.write()
 
     async def colorHSV(self, hue, sat, val):
@@ -48,7 +48,7 @@ class Leds():
         :return: (r, g, b) tuple
         """
 
-        print("HSV value: ", hue, sat, val)
+        #print("HSV value: ", hue, sat, val)
 
         if hue >= 65536:
             hue %= 65536
@@ -91,6 +91,6 @@ class Leds():
         g = ((((g * s1) >> 8) + s2) * v1) >> 8
         b = ((((b * s1) >> 8) + s2) * v1) >> 8
 
-        print("RGB value: ", r, g, b)
+        #print("RGB value: ", r, g, b)
 
         return (r, g, b)

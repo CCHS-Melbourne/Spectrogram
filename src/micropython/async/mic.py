@@ -1,12 +1,21 @@
-from ulab import utils as utils
-SAMPLE_COUNT = 512 # (WLED is 512)
+from ulab import utils
+import math
+import asyncio
+from leds import Leds
+from ulab import numpy as np
+from machine import Pin, I2S
+
+SAMPLE_RATE = 22050 # Hz (WLED is 22050)
+SAMPLE_SIZE = 16
+SAMPLE_COUNT = 1024 # (WLED is 512)
 
 rawsamples = bytearray(SAMPLE_COUNT * SAMPLE_SIZE // 8)
+scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of the FFT
 
 ID = 0
-SD = Pin(5)
-SCK = Pin(2)
-WS = Pin(4)
+SD = Pin(12)
+SCK = Pin(13)
+WS = Pin(17)
 
 UNPOWER, MINPEAK = lambda x: math.pow(x,1/2), None
 
@@ -21,7 +30,8 @@ class Mic():
     async def mini_wled(self, samples):
         assert (len(samples) == SAMPLE_COUNT)
         
-        magnitudes = utils.spectrogram(samples)
+        magnitudes = utils.spectrogram(samples, scratchpad=scratchpad, log=True)
+        #magnitudes = utils.spectrogram(samples)
 
         async def sum_and_scale(m, f, t):
             scale = [None if i == 0 else math.sqrt(i)/i for i in range(30)]
@@ -47,7 +57,6 @@ class Mic():
             await sum_and_scale(magnitudes,206,232), # - 10013 Hz
         ]
 
-        #print(fftCalc)
         return fftCalc
 
 
@@ -68,6 +77,8 @@ class Mic():
             # calculate channels from samples
             channels = await self.mini_wled(samples)
 
-            channels = [UNPOWER(channels[i]) if channels[i] >= 1 else 0 for i in range(len(channels))]
+            #channels = [UNPOWER(channels[i]) if channels[i] >= 1 else 0 for i in range(len(channels))]
             for i in range(0, 15):
-                await leds.show_hsv(i, 1, 1, int(channels[i]))
+                print(i, channels[i])
+                if channels[i] != float("-inf"):
+                    await leds.show_hsv(i, 1, int(channels[i])*8, 5)
