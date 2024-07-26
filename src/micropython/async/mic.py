@@ -4,6 +4,7 @@ import asyncio
 from leds import Leds
 from ulab import numpy as np
 from machine import Pin, I2S
+from time import ticks_us, ticks_diff
 
 SAMPLE_RATE = 22050 # Hz (WLED is 22050)
 SAMPLE_SIZE = 16
@@ -17,8 +18,6 @@ SD = Pin(12)
 SCK = Pin(13)
 WS = Pin(17)
 
-UNPOWER, MINPEAK = lambda x: math.pow(x,1/2), None
-
 class Mic():
     def __init__(self):
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
@@ -29,10 +28,14 @@ class Mic():
 
     # FIXME: Needs thorough review and optimization, way too slow with 12*3 LEDs as-is
     async def mini_wled(self, samples):
+        t0 = ticks_us()
         assert (len(samples) == SAMPLE_COUNT)
-        
+
+        tfft0 = ticks_us()
         magnitudes = utils.spectrogram(samples, scratchpad=scratchpad, log=True)
-        #magnitudes = utils.spectrogram(samples)
+        tfft1 = ticks_us()
+        #print(f'spectrogram:{ticks_diff(tfft1, tfft0):6d} µs')
+
 
         async def sum_and_scale(m, f, t):
             #scale = [None if i == 0 else math.sqrt(i)/i for i in range(200)]
@@ -74,13 +77,15 @@ class Mic():
             await sum_and_scale(magnitudes,1001,1100),
             await sum_and_scale(magnitudes,1101,1200),
 
-            await sum_and_scale(magnitudes,1201, 1300),
+            await sum_and_scale(magnitudes,1201,1300),
             await sum_and_scale(magnitudes,1301,1400),
             await sum_and_scale(magnitudes,1401,1500),
             await sum_and_scale(magnitudes,1501,1600),
             await sum_and_scale(magnitudes,1601,1700),
             await sum_and_scale(magnitudes,1701,1800),
         ]
+        t1 = ticks_us()
+        #print(f'mini-wled:  {ticks_diff(t1, t0):6d} µs')
 
         return fftCalc
 
@@ -98,12 +103,15 @@ class Mic():
                 samples = np.frombuffer(rawsamples, dtype=np.int16)
             else:
                 raise NotImplementedError
-    
+            
             # calculate channels from samples
             channels = await self.mini_wled(samples)
 
-            #channels = [UNPOWER(channels[i]) if channels[i] >= 1 else 0 for i in range(len(channels))]
+            t0 = ticks_us()
             for i in range(0, len(channels)):
-                print(i, channels[i])
                 if channels[i] != float("-inf"):
                     await leds.show_hsv(i, 1, int(channels[i])*8, 5)
+            t1 = ticks_us()
+            print(f'mic run led write:{ticks_diff(t1, t0):6d} µs')
+
+

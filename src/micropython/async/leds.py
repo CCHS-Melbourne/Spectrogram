@@ -2,6 +2,7 @@ import asyncio
 from random import randint
 from neopixel import NeoPixel
 from machine import Pin
+from time import ticks_us, ticks_diff
 
 NUM_LEDS = 12*3
 LEDS_PIN = 18
@@ -48,6 +49,7 @@ class Leds():
         :return: (r, g, b) tuple
         """
 
+        t0 = ticks_us()
         #print("HSV value: ", hue, sat, val)
 
         if hue >= 65536:
@@ -92,5 +94,8 @@ class Leds():
         b = ((((b * s1) >> 8) + s2) * v1) >> 8
 
         #print("RGB value: ", r, g, b)
+
+        t1 = ticks_us()
+        #print(f'colorHSV time:{ticks_diff(t1, t0):6d} µs')
 
         return (r, g, b)
