@@ -90,7 +90,7 @@ class Mic():
         return fftCalc
 
 
-    async def run(self):
+    async def start(self):
         leds = Leds()
 
         while True:
@@ -112,6 +112,5 @@ class Mic():
                 if channels[i] != float("-inf"):
                     await leds.show_hsv(i, 1, int(channels[i])*8, 5)
             t1 = ticks_us()
-            print(f'mic run led write:{ticks_diff(t1, t0):6d} µs')
-
+            #print(f'mic run led write:{ticks_diff(t1, t0):6d} µs')
 

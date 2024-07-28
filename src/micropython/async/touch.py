@@ -1,13 +1,54 @@
+# Inspired by: https://github.com/peterhinch/micropython-async/blob/master/v3/primitives/pushbutton.py
+#import time
 import asyncio
 
-class Leds():
-    def __iter__(self):
-        return 42
+try:
+    from machine import TouchPad
+except ImportError:
+    pass
 
-async def light():
-    leds = Leds()
-    print('waiting for leds')
-    res = await leds  # Retrieve result
-    print('done', res)
 
-asyncio.run(light())
+class Touch:
+    thresh = (80 << 8) // 100   # 80%
+    debounce_ms = 50
+
+    def __init__(self, pin):
+        self._tf = False
+        self._thresh = 0  # Detection threshold
+        self._rawval = 0
+                          # https://github.com/micropython/micropython/issues/13178#issuecomment-2254331069
+        #time.sleep_ms(5) # Dirty workaround: Let the sensor stabilise
+        try:
+            self._pad = TouchPad(pin)
+        except ValueError:
+            raise ValueError(pin)  # Let's have a bit of information :)
+
+        #asyncio.run(self.run())
+
+    async def start(self):
+        self._state = await self.rawstate()  # Initial state
+
+        while True:
+            await self._check(await self.rawstate())
+            # Ignore state changes until switch has settled. Also avoid hogging CPU.
+            # See https://github.com/peterhinch/micropython-async/issues/69
+            await asyncio.sleep_ms(self.debounce_ms)
+
+    async def _check(self, state):
+        pass
+        # if state == self._state:
+        #     return
+        # State has changed: act on it now.
+        # self._state = state
+        # if state:  # Button pressed: launch pressed func
+        #     print("meow")
+        #     self._state = False
+
+    async def rawstate(self):
+        rv = self._pad.read()  # ~220μs
+        print(rv)
+        if rv > self._rawval:  # Either initialisation or pad was touched
+            self._rawval = rv  # when initialised and has now been released
+            self._thresh = (rv * self.thresh) >> 8
+            return False  # Untouched
+        return rv < self._thresh
