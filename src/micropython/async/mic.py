@@ -42,7 +42,7 @@ class Mic():
             return sum([m[i]/20 for i in range(f,t+1)])# * scale[t-f+1]
             #print(len(m), f, t)
             #return sum([m[i] for i in range(f, t+1)])
-        
+
         fftCalc = [
             await sum_and_scale(magnitudes,1,2), #  22 -   108 Hz
             await sum_and_scale(magnitudes,3,4), #     -   194 Hz
@@ -103,14 +103,22 @@ class Mic():
                 samples = np.frombuffer(rawsamples, dtype=np.int16)
             else:
                 raise NotImplementedError
-            
+
             # calculate channels from samples
             channels = await self.mini_wled(samples)
 
             t0 = ticks_us()
             for i in range(0, len(channels)):
                 if channels[i] != float("-inf"):
-                    await leds.show_hsv(i, 1, int(channels[i])*8, 5)
+                    if int(channels[i])<=170: #the blue-red part of the hue colour space is at the high end (2^14 to 2^16). if the magnitude is less than (2/3)*255, map to the blue-red zone
+                        original_range = [0, 170]
+                        target_range = [32768, 65535]
+                        hue=np.interp(int(channels[i]),original_range,target_range)[0] #interp gives and array, extract first value
+                    else: #the red-yellow part of the hue colour space is at the low end (0 to 2^14). if the magnitude is greater than (2/3)*255, map to the red-yellow zone
+                        original_range = [171, 255]
+                        target_range = [0, 16320]
+                        hue=np.interp(int(channels[i]),original_range,target_range)[0] #interp gives and array, extract first value
+                await leds.show_hsv(i, int(hue), int(channels[i])*8, 5)
             t1 = ticks_us()
             #print(f'mic run led write:{ticks_diff(t1, t0):6d} µs')
 
