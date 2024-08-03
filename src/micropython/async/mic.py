@@ -14,8 +14,8 @@ rawsamples = bytearray(SAMPLE_COUNT * SAMPLE_SIZE // 8)
 scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of the FFT
 
 ID = 0
-SD = Pin(12)
-SCK = Pin(13)
+SD = Pin(15)
+SCK = Pin(16)
 WS = Pin(17)
 
 class Mic():
@@ -118,7 +118,7 @@ class Mic():
                         original_range = [171, 255]
                         target_range = [0, 16320]
                         hue=np.interp(int(channels[i]),original_range,target_range)[0] #interp gives and array, extract first value
-                await leds.show_hsv(i, int(hue), int(channels[i])*8, 5)
+                    await leds.show_hsv(i, int(hue), int(channels[i])*8, 5)
             t1 = ticks_us()
             #print(f'mic run led write:{ticks_diff(t1, t0):6d} µs')
 
