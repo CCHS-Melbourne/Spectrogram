@@ -34,12 +34,7 @@ class Mic():
         magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)#, log=True)
         #magnitudes = utils.spectrogram(samples)
         tfft1 = ticks_us()
-        print(f'spectrogram:{ticks_diff(tfft1, tfft0):6d} µs')
-
-
-        def sum_and_scale(m, f, t):
-            #print(len(m), f, t)
-            return sum([m[i] for i in range(f,t+1)])
+        #print(f'spectrogram:{ticks_diff(tfft1, tfft0):6d} µs')
 
         fft_ranges = [
             (1, 2), (3, 4), (5, 7), (8, 11), (12, 16), (17, 23), (24, 33), 
@@ -52,7 +47,12 @@ class Mic():
         ]
 
         t1 = ticks_us()
-        fftCalc = [sum_and_scale(magnitudes, f, t) for f, t in fft_ranges]
+
+        tsc0 = ticks_us()
+        fftCalc = [np.sum(magnitudes[f:t+1]) for f, t in fft_ranges]
+        tsc1 = ticks_us()
+        #print(f'sum_and_scale:{ticks_diff(tsc1, tsc0):6d} µs')
+
         #print(f'mini-wled:  {ticks_diff(t1, t0):6d} µs')
 
         return fftCalc
@@ -69,18 +69,39 @@ class Mic():
             channels = await self.mini_wled(samples)
 
             t0 = ticks_us()
-            for i, led in enumerate(channels):
-                if led != float("-inf"): # TODO: Filter upstream, getting too many here in log=True mode for utils.spectrogram().
-                    led = int(led)
-                    if led<=170: #the blue-red part of the hue colour space is at the high end (2^14 to 2^16). if the magnitude is less than (2/3)*255, map to the blue-red zone
-                        original_range = [0, 170]
-                        target_range = [32768, 65535]
-                        hue=np.interp(led,original_range,target_range)[0] #interp gives and array, extract first value
-                    else: #the red-yellow part of the hue colour space is at the low end (0 to 2^14). if the magnitude is greater than (2/3)*255, map to the red-yellow zone
-                        original_range = [171, 255]
-                        target_range = [0, 16320]
-                        hue=np.interp(led,original_range,target_range)[0] #interp gives and array, extract first value
-                    #print(i, led)
-                    await leds.show_hsv(i, int(hue), int(led/200), 2)
+
+            # Assuming channels is a numpy array
+            leds_array = np.array(channels)
+
+            # Create masks for different hue ranges
+            mask_blue_red = leds_array <= 170
+            mask_red_yellow = leds_array > 170
+
+            # Define ranges and target mappings
+            original_range_blue_red = np.array([0, 170])
+            target_range_blue_red = np.array([32768, 65535])
+            original_range_red_yellow = np.array([171, 255])
+            target_range_red_yellow = np.array([0, 16320])
+
+            # Interpolate for hues
+            hue_blue_red = np.interp(leds_array[mask_blue_red], original_range_blue_red, target_range_blue_red)
+            hue_red_yellow = np.interp(leds_array[mask_red_yellow], original_range_red_yellow, target_range_red_yellow)
+
+            # Combine hue results
+            hues = np.where(mask_blue_red, hue_blue_red, hue_red_yellow)
+
+            # Calculate value based on LED
+            values = np.where(leds_array != float("-inf"), np.clip(leds_array / 200, 0, 255), 0)
+
+            # Prepare indices and valid LEDs
+            indices = np.arange(len(channels))
+
+            # Filter out invalid LEDs
+            valid_indices = leds_array != float("-inf")
+
+            # Use async to call show_hsv for valid LEDs
+            for i, hue, value in zip(indices[valid_indices], hues[valid_indices], values[valid_indices]):
+                await leds.show_hsv(i, int(hue), int(value), int(value/10))
+
             t1 = ticks_us()
             print(f'mic run led write:{ticks_diff(t1, t0):6d} µs')
