@@ -61,14 +61,19 @@ class Mic():
     async def start(self):
         leds = Leds()
 
+        # mic while True: 237412 µs
         while True:
-            await asyncio.StreamReader(self.microphone).readinto(rawsamples)
-            samples = np.frombuffer(rawsamples, dtype=np.int16)
-
-            # calculate channels from samples
-            channels = await self.mini_wled(samples)
-
+            # mic sampling:102448 µs
             t0 = ticks_us()
+            await asyncio.StreamReader(self.microphone).readinto(rawsamples)
+            samples = np.frombuffer(rawsamples, dtype=np.int16) # 150 µs
+            t1 = ticks_us()
+            #print(f'mic sampling:{ticks_diff(t1, t0):6d} µs')
+
+            t2 = ticks_us()
+            # calculate channels from samples
+            channels = await self.mini_wled(samples) # 19863 µs
+            t3 = ticks_us()
 
             # Assuming channels is a numpy array
             leds_array = np.array(channels)
@@ -98,10 +103,12 @@ class Mic():
 
             # Filter out invalid LEDs
             valid_indices = leds_array != float("-inf")
-
+            t4 = ticks_us()
             # Use async to call show_hsv for valid LEDs
+            # 114154 µs
             for i, hue, value in zip(indices[valid_indices], hues[valid_indices], values[valid_indices]):
                 await leds.show_hsv(i, int(hue), int(value), int(value/10))
+            t5 = ticks_us()
+            print(f'while True for loop:{ticks_diff(t5, t4):6d} µs')
 
-            t1 = ticks_us()
-            print(f'mic run led write:{ticks_diff(t1, t0):6d} µs')
+
