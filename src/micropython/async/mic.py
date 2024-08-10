@@ -10,7 +10,7 @@ from time import ticks_us, ticks_diff
 # DMA buffer should be at least twice, rounded to power of two.
 SAMPLE_RATE = 16000 # Hz
 SAMPLE_SIZE = 16
-SAMPLE_COUNT = 2048
+SAMPLE_COUNT = 4096
 
 rawsamples = bytearray(SAMPLE_COUNT * SAMPLE_SIZE // 8)
 scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of the FFT
@@ -39,7 +39,8 @@ class Mic():
 
         fft_ranges = [
             #(0,84),(85,169),(170,254),(255,339),(340,424),(425,509),(510,594),(595,679),(680,764),(765,849),(850,934),(935,1023)
-            (22, 39), (40, 70), (71, 126), (127, 226), (227, 403), (404, 718), (719, 1023)
+            #(22, 39), (40, 70), (71, 126), (127, 226), (227, 403), (404, 718), (719, 1023) #octave per led
+            (19,24),(25,33),(34,44),(45,59),(60,79),(80,106),(107,142),(143,190),(191,254),(255,340),(341,454),(455,607)
             #(1, 2), (3, 4), (5, 7), (8, 11), (12, 16), (17, 23), (24, 33), (34, 46), (47, 62), (47, 52), (53, 62), (63, 70)
         ]
 
@@ -72,11 +73,11 @@ class Mic():
             t1 = ticks_us()
             #print("mic sampling:", ticks_diff(t1, t0))
 
-            t2 = ticks_us()
+            #t2 = ticks_us()
             # calculate channels from samples
             channels = await self.mini_wled(samples) # 19863 µs
             #print(channels)
-            t3 = ticks_us()
+            #t3 = ticks_us()
             
             # Assuming channels is a numpy array
             leds_array = np.array(channels)
@@ -113,12 +114,12 @@ class Mic():
             # Filter out invalid LEDs
             #valid_indices = leds_array != float("-inf")
             
-            t4 = ticks_us()
+            #t4 = ticks_us()
             # Use async to call show_hsv for valid LEDs
             # 114154 µs
             #for i, hue, value in zip(indices[valid_indices], hues[valid_indices], values[valid_indices]):
                 #await leds.show_hsv(i, int(hue), 255, int(value/10))
             for i in range(0,len(leds_array)):
                 await leds.show_hsv(i, int(hues[i]), 255, int(leds_array[i]))            
-            t5 = ticks_us()
-            print("mic sampling:", ticks_diff(t1, t0),'led_write loop:',ticks_diff(t5, t4))
+            #t5 = ticks_us()
+            #print("mic sampling:", ticks_diff(t1, t0),'led_write loop:',ticks_diff(t5, t4))
