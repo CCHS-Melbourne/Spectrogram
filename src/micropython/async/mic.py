@@ -6,6 +6,8 @@ from ulab import numpy as np
 from machine import Pin, I2S
 from time import ticks_us, ticks_diff
 
+# 512 in the FFT 16000/512 ~ 30Hz update.
+# DMA buffer should be at least twice, rounded to power of two.
 SAMPLE_RATE = 16000 # Hz
 SAMPLE_SIZE = 16
 SAMPLE_COUNT = 2048
@@ -23,8 +25,7 @@ class Mic():
     def __init__(self):
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
                               bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
-                              ibuf=4096)
-
+                              ibuf=40000)
 
     # FIXME: Needs thorough review and optimization, way too slow with 12*3 LEDs as-is
     async def mini_wled(self, samples):
@@ -74,41 +75,39 @@ class Mic():
             # calculate channels from samples
             channels = await self.mini_wled(samples) # 19863 µs
             t3 = ticks_us()
-
+            
             # Assuming channels is a numpy array
             leds_array = np.array(channels)
-
+            
             # Create masks for different hue ranges
             mask_blue_red = leds_array <= 170
             mask_red_yellow = leds_array > 170
-
+            
             # Define ranges and target mappings
             original_range_blue_red = np.array([0, 170])
             target_range_blue_red = np.array([32768, 65535])
             original_range_red_yellow = np.array([171, 255])
             target_range_red_yellow = np.array([0, 16320])
-
+            
             # Interpolate for hues
             hue_blue_red = np.interp(leds_array[mask_blue_red], original_range_blue_red, target_range_blue_red)
             hue_red_yellow = np.interp(leds_array[mask_red_yellow], original_range_red_yellow, target_range_red_yellow)
-
+            
             # Combine hue results
             hues = np.where(mask_blue_red, hue_blue_red, hue_red_yellow)
-
+            
             # Calculate value based on LED
             values = np.where(leds_array != float("-inf"), np.clip(leds_array / 200, 0, 255), 0)
-
+            
             # Prepare indices and valid LEDs
             indices = np.arange(len(channels))
-
+            
             # Filter out invalid LEDs
             valid_indices = leds_array != float("-inf")
             t4 = ticks_us()
             # Use async to call show_hsv for valid LEDs
             # 114154 µs
             for i, hue, value in zip(indices[valid_indices], hues[valid_indices], values[valid_indices]):
-                await leds.show_hsv(i, int(hue), int(value), int(value/10))
+                await leds.show_hsv(i, int(hue), int(value), int(value/10))            
             t5 = ticks_us()
             print(f'while True for loop:{ticks_diff(t5, t4):6d} µs')
-
-

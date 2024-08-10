@@ -1,5 +1,5 @@
 # Inspired by: https://github.com/peterhinch/micropython-async/blob/master/v3/primitives/pushbutton.py
-#import time
+import time
 import asyncio
 
 try:
@@ -17,7 +17,7 @@ class Touch:
         self._thresh = 0  # Detection threshold
         self._rawval = 0
                           # https://github.com/micropython/micropython/issues/13178#issuecomment-2254331069
-        #time.sleep_ms(5) # Dirty workaround: Let the sensor stabilise
+        #time.sleep_ms(500) # Dirty workaround: Let the sensor stabilise on init
         try:
             self._pad = TouchPad(pin)
         except ValueError:
@@ -45,10 +45,12 @@ class Touch:
         #     self._state = False
 
     async def rawstate(self):
+        time.sleep_ms(100) # Dirty workaround: Let the sensor stabilise
         rv = self._pad.read()  # ~220μs
-        print(rv)
+        #print(rv)
         if rv > self._rawval:  # Either initialisation or pad was touched
             self._rawval = rv  # when initialised and has now been released
             self._thresh = (rv * self.thresh) >> 8
             return False  # Untouched
         return rv < self._thresh
+

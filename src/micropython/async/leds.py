@@ -32,11 +32,16 @@ class Leds():
         await self.blink()
 
     async def show_hsv(self, led_nr, hue, sat, val):
+        #show_hsv time to pixel:  3068 µs
+        t0 = ticks_us()
         rgb = await self.colorHSV(hue, sat, val)
         self.neopix[led_nr] = rgb
         self.neopix.write()
+        t1 = ticks_us()
+        #print(f'show_hsv time to pixel:{ticks_diff(t1, t0):6d} µs')
 
     async def colorHSV(self, hue, sat, val):
+        # colorHSV time:    64 µs
         """
         Converts HSV color to rgb tuple and returns it.
         The logic is almost the same as in Adafruit NeoPixel library:
