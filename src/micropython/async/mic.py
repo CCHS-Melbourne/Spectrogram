@@ -8,7 +8,7 @@ from time import ticks_us, ticks_diff
 
 # 512 in the FFT 16000/512 ~ 30Hz update.
 # DMA buffer should be at least twice, rounded to power of two.
-SAMPLE_RATE = 16000 # Hz
+SAMPLE_RATE = 8000 # Hz
 SAMPLE_SIZE = 16
 SAMPLE_COUNT = 4096
 
@@ -81,8 +81,11 @@ class Mic():
             
             # Assuming channels is a numpy array
             leds_array = np.array(channels)
+            #if scaling only the leds_array, when quiet, the maximum ambient noise dynamically becomes bright, which is distracting, need to make noise an ambient low level of intensity
+            brightness_range=np.array([0,255])
+            summed_magnitude_range=np.array([0, 50000])
             #scale to 0-255 range, can/should scale up for more hue resolution
-            leds_array = (leds_array/np.max(leds_array[:]))*255
+            leds_array = np.interp(leds_array, summed_magnitude_range, brightness_range)
             
             # Create masks for different hue ranges
             mask_blue_red = np.where(leds_array <= 170,1,0)
