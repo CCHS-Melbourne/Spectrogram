@@ -36,23 +36,36 @@ class Mic():
         root_octave=4
         #borders are defined as the A frequency in each octave
         self.borders=TUNING_A4_HZ*(2**(octaves_covered-root_octave))
-        print(self.borders)
+        #print(self.borders)
+#         note_numbers=
+        exponents=(np.arange(1.,77.)-49)/12 #see wikipedia: https://en.wikipedia.org/wiki/Piano_key_frequencies
+        #print('exponents: ',exponents)
+        self.notes=TUNING_A4_HZ*(2**exponents)
+        #print(self.notes)
+        self.modes=["Intensity","Synesthesia"]
+        self.mode=self.modes[1]
+        
+        hue_max=65535 #2^16, according to notes in leds.py
+        hue_diff=4000
+        base_hue=40000
+        self.note_hues=np.arange(12.)
+        for i in np.arange(len(self.note_hues)):
+            self.note_hues[i]=(base_hue+(i*hue_diff))%65535
+        print(self.note_hues)
         
         #figure out what tones correspond to what magnitudes out of the fft, with respect to the mic sampling parameters
         self.tones=FREQUENCY_RESOLUTION*np.arange(SAMPLE_COUNT/2)
-        #print(self.tones)
-        
+        print(self.tones)       
         crossovers = []
-
         # Loop through the fixed interval array, finding the index where that boundary is crossed, storing that index and its corresponding frequency in a tuple, appending to a list
         # this is with respect to the mic sampling parameters, again. 
         for i in range(len(self.tones) - 1):
             for boundary in self.borders:
                 if self.tones[i] <= boundary < self.tones[i + 1]:
                     crossovers.append((i, self.tones[i]))
-        print(crossovers)
+        #print(crossovers)
         self.fft_ranges=[(tup[0],crossovers[i+1][0]-1) for i, tup in enumerate(crossovers[:-1])]
-        print(self.fft_ranges)
+        #print(self.fft_ranges)
                     
     # FIXME: Needs thorough review and optimization, way too slow with 12*3 LEDs as-is
     async def mini_wled(self, samples):
@@ -79,17 +92,24 @@ class Mic():
 
         tsc0 = ticks_us()
         fftCalc=[]
+        dominants=[]
         for f in self.fft_ranges:
+            #first block that could be if statemented into a display mode
             slice_sum = np.sum(magnitudes[f[0]:f[1]])
-            slice_diff = f[1]-f[0]
-            normalized_sum = slice_sum/slice_diff
+            slice_index_diff = f[1]-f[0]
+            normalized_sum = slice_sum/slice_index_diff
             fftCalc.append(normalized_sum)
+            #second block that could be if statemented into a display mode
+            dominant_mag=np.argmax(magnitudes[f[0]:f[1]])+f[0] #find out where the max magnitude in the slice is, then add the starting index of the slice, or you'll get veeeery odd frequency curves.
+            dominant_tone=self.tones[dominant_mag]
+            #print("dom mag index",dominant_mag,"tone :",dominant_tone)
+            dominants.append(dominant_tone)
         tsc1 = ticks_us()
         #print(f'sum_and_scale:{ticks_diff(tsc1, tsc0):6d} µs')
 
         #print(f'mini-wled:  {ticks_diff(t1, t0):6d} µs')
 
-        return fftCalc
+        return fftCalc,dominants
 
 
     async def start(self):
@@ -105,45 +125,65 @@ class Mic():
 
 #             t2 = ticks_us()
             # calculate channels from samples
-            channels = await self.mini_wled(samples) # 19863 µs
-            #print(channels)
+            channels,dominants = await self.mini_wled(samples) # 19863 µs
+            #print('dominants: ', dominants)
 #             t3 = ticks_us()
             
             # Assuming channels is a numpy array
-            leds_array = np.array(channels)
-            #if scaling only the leds_array, when quiet, the maximum ambient noise dynamically becomes bright, which is distracting, need to make noise an ambient low level of intensity
+            leds_bin_sum = np.array(channels)
+            #if scaling only the leds_bin_sum, when quiet, the maximum ambient noise dynamically becomes bright, which is distracting, need to make noise an ambient low level of intensity
             brightness_range=np.array([0,255])
             summed_magnitude_range=np.array([0, 50000])
             #scale to 0-255 range, can/should scale up for more hue resolution
-            leds_array = np.interp(leds_array, summed_magnitude_range, brightness_range)
+            leds_bin_sum = np.interp(leds_bin_sum, summed_magnitude_range, brightness_range)
             
-            # Create masks for different hue ranges
-            mask_blue_red = np.where(leds_array <= 170,1,0)
-            #print("mask blue red:", mask_blue_red)
-            mask_red_yellow = np.where(leds_array > 170,1,0)
-            #print("mask red yellow:", mask_red_yellow)
-            
-            # Define ranges and target mappings
-            original_range_blue_red = np.array([0, 170])
-            target_range_blue_red = np.array([32768, 65535])
-            original_range_red_yellow = np.array([171, 255])
-            target_range_red_yellow = np.array([0, 16320])
-            
-            # Interpolate for hues
-            hue_blue_red = np.where(mask_blue_red, np.interp(leds_array, original_range_blue_red, target_range_blue_red),0)
-            #print("hue red yellow:", mask_blue_red)
-            hue_red_yellow = np.where(mask_red_yellow, np.interp(leds_array, original_range_red_yellow, target_range_red_yellow),0)
-            #print("hue red yellow:", mask_red_yellow)
-            
-            # Combine hue results
-            hues = np.where(mask_blue_red, hue_blue_red, hue_red_yellow)
-             
-#             t4 = ticks_us()
-            # Use async to call show_hsv for valid LEDs
-            # 114154 µs
-            #for i, hue, value in zip(indices[valid_indices], hues[valid_indices], values[valid_indices]):
-                #await leds.show_hsv(i, int(hue), 255, int(value/10))
-            for i in range(0,len(leds_array)):
-                await leds.show_hsv(i, int(hues[i]), 255, int(leds_array[i]))            
-#             t5 = ticks_us()
+            if self.mode=="Intensity":            
+                # Create masks for different hue ranges
+                mask_blue_red = np.where(leds_bin_sum <= 170,1,0)
+                #print("mask blue red:", mask_blue_red)
+                mask_red_yellow = np.where(leds_bin_sum > 170,1,0)
+                #print("mask red yellow:", mask_red_yellow)
+                
+                # Define ranges and target mappings
+                original_range_blue_red = np.array([0, 170])
+                target_range_blue_red = np.array([32768, 65535])
+                original_range_red_yellow = np.array([171, 255])
+                target_range_red_yellow = np.array([0, 16320])
+                
+                # Interpolate for hues
+                hue_blue_red = np.where(mask_blue_red, np.interp(leds_bin_sum, original_range_blue_red, target_range_blue_red),0)
+                #print("hue red yellow:", mask_blue_red)
+                hue_red_yellow = np.where(mask_red_yellow, np.interp(leds_bin_sum, original_range_red_yellow, target_range_red_yellow),0)
+                #print("hue red yellow:", mask_red_yellow)
+                
+                # Combine hue results
+                intensity_hues = np.where(mask_blue_red, hue_blue_red, hue_red_yellow)
+                #print('intensity hues',intensity_hues)
+                
+    #             t4 = ticks_us()
+                # Use async to call show_hsv for valid LEDs
+                # 114154 µs
+                #for i, hue, value in zip(indices[valid_indices], intensity_hues[valid_indices], values[valid_indices]):
+                    #await leds.show_hsv(i, int(hue), 255, int(value/10))
+                for i in range(0,len(leds_bin_sum)):
+                    await leds.show_hsv(i, int(intensity_hues[i]), 255, int(leds_bin_sum[i]))            
+    #             t5 = ticks_us()
+    
+            if self.mode=="Synesthesia":
+                dominants_array=np.array(dominants)
+                dominants_notes=np.arange(len(dominants_array))
+                current_hues=np.arange(0.,len(dominants_array))#This line stumped me for an hour, it initializes as unit16, which causes the note calculation to overflow. Causing negative numbers, causing green spikes of full brightness
+                for i in range(len(dominants_array)):
+                    note=int(12.*np.log2(dominants_array[i]/440.)+49.)#see wikipedia: https://en.wikipedia.org/wiki/Piano_key_frequencies
+                    #print('note: ',note)
+                    if note<0:
+                        note=0
+                    dominants_notes[i]=note%12
+                    current_hues[i]=self.note_hues[note%12]
+#                 print("dominants_notes:",dominants_notes)
+                print("current hues:",current_hues)
+                
+                for i in range(0,len(leds_bin_sum)):
+                    await leds.show_hsv(i, int(current_hues[i]), 255, int(leds_bin_sum[i])) 
+    
 #             print("mic sampling:", ticks_diff(t1, t0),"fft calc and bin sum",ticks_diff(t3,t2),'led_write loop:',ticks_diff(t5, t4))
