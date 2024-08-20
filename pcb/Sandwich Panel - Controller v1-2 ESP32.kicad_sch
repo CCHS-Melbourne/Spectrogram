@@ -6506,7 +6506,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Pancake:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 130.81 143.51 0)
 			(effects
 				(font
@@ -6704,7 +6704,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Pancake:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 130.81 140.97 0)
 			(effects
 				(font
@@ -7138,7 +7138,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Pancake:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 130.81 146.05 0)
 			(effects
 				(font
@@ -7755,7 +7755,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Pancake:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 97.79 130.81 0)
 			(effects
 				(font
@@ -8410,7 +8410,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Pancake:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 130.81 176.53 0)
 			(effects
 				(font
@@ -8477,7 +8477,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Pancake:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 130.81 179.07 0)
 			(effects
 				(font
@@ -9262,7 +9262,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Pancake:TestPoint_Pad_D1.0mm"
+		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 130.81 148.59 0)
 			(effects
 				(font
