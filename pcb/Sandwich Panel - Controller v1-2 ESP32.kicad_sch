@@ -1598,6 +1598,371 @@
 				)
 			)
 		)
+		(symbol "INMP441:INMP441"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "MK1"
+				(at 0 15.24 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "INMP441"
+				(at 0 12.7 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "INMP441:MIC_INMP441"
+				(at 41.148 -24.892 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "MF" "TDK InvenSense"
+				(at 0 -22.606 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "MAXIMUM_PACKAGE_HEIGHT" "1.05 mm"
+				(at -18.034 -25.4 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "Package" "None"
+				(at 42.418 -21.336 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "Price" ""
+				(at 31.242 -18.034 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "Check_prices" "https://www.snapeda.com/parts/INMP441/TDK+InvenSense/view-part/?ref=eda"
+				(at 3.302 -16.764 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "STANDARD" "Manufacturer Recommendations"
+				(at 0.254 -20.066 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "PARTREV" "1.1"
+				(at 42.926 -18.542 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "SnapEDA_Link" "https://www.snapeda.com/parts/INMP441/TDK+InvenSense/view-part/?ref=snap"
+				(at 4.826 -13.716 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "MP" "INMP441"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "Description_1" "\nEVAL BOARD MEMS MIC INMP441\n"
+				(at 34.036 -26.67 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "Availability" "Not in stock"
+				(at 3.302 -25.4 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(property "MANUFACTURER" "TDK InvenSense"
+				(at 25.654 -22.352 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify bottom)
+					(hide yes)
+				)
+			)
+			(symbol "INMP441_0_0"
+				(rectangle
+					(start -12.7 -10.16)
+					(end 12.7 10.16)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(pin input clock
+					(at 17.78 2.54 180)
+					(length 5.08)
+					(name "SCK"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 17.78 -2.54 180)
+					(length 5.08)
+					(name "SD"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 17.78 0 180)
+					(length 5.08)
+					(name "WS"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -17.78 -2.54 0)
+					(length 5.08)
+					(name "L/R"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 17.78 -5.08 180)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "5_1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 17.78 -10.16 180)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "5_2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 17.78 -8.89 180)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 17.78 7.62 180)
+					(length 5.08)
+					(name "VDD"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -17.78 2.54 0)
+					(length 5.08)
+					(name "CHIPEN"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 17.78 -7.62 180)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+			)
+		)
 		(symbol "Jumper:SolderJumper_2_Open"
 			(pin_names
 				(offset 0) hide)
@@ -4111,10 +4476,40 @@
 		)
 	)
 	(junction
+		(at 62.23 162.56)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "0b1f63f5-5f83-4a18-959c-6fb9aa40dec0")
+	)
+	(junction
+		(at 58.42 158.75)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "19623384-07f2-4392-94c2-970f7b5e8286")
+	)
+	(junction
 		(at 128.27 38.1)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "1a15f152-f9d6-4c5a-b250-bbeefc2c55bd")
+	)
+	(junction
+		(at 58.42 161.29)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "252df0fc-11f4-4af9-9a4c-81fb4c9a05f3")
+	)
+	(junction
+		(at 58.42 160.02)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "860e47a2-7185-4c17-8a31-5fb34503f020")
+	)
+	(junction
+		(at 59.69 143.51)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "8ba09e96-fed6-4620-a8a0-2c3f3f9fec6f")
 	)
 	(junction
 		(at 130.81 118.11)
@@ -4198,6 +4593,16 @@
 	)
 	(wire
 		(pts
+			(xy 62.23 161.29) (xy 62.23 162.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0652f125-31b5-4d5c-9528-1af29d04c649")
+	)
+	(wire
+		(pts
 			(xy 90.17 123.19) (xy 95.25 123.19)
 		)
 		(stroke
@@ -4228,6 +4633,16 @@
 	)
 	(wire
 		(pts
+			(xy 54.61 165.1) (xy 54.61 162.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1076cf6a-7aef-4c7a-8b4b-bcfa6be9518d")
+	)
+	(wire
+		(pts
 			(xy 90.17 43.18) (xy 90.17 40.64)
 		)
 		(stroke
@@ -4248,6 +4663,16 @@
 	)
 	(wire
 		(pts
+			(xy 58.42 160.02) (xy 58.42 161.29)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1e87c55d-b95a-45ee-b978-ed28c4e998d2")
+	)
+	(wire
+		(pts
 			(xy 88.9 140.97) (xy 95.25 140.97)
 		)
 		(stroke
@@ -4255,6 +4680,26 @@
 			(type default)
 		)
 		(uuid "1ea4aa58-8f68-4290-bb3c-03d0764d6aba")
+	)
+	(wire
+		(pts
+			(xy 58.42 158.75) (xy 58.42 160.02)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "260aff3b-c383-4a96-95b9-1037961cb8e6")
+	)
+	(wire
+		(pts
+			(xy 58.42 156.21) (xy 58.42 158.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "299297b1-7b9f-4a77-a4f7-3a70ae7524e6")
 	)
 	(wire
 		(pts
@@ -4288,6 +4733,16 @@
 	)
 	(wire
 		(pts
+			(xy 22.86 153.67) (xy 22.86 165.1)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "351fb539-667c-4a6f-b963-9c7322adda6f")
+	)
+	(wire
+		(pts
 			(xy 166.37 105.41) (xy 166.37 115.57)
 		)
 		(stroke
@@ -4305,6 +4760,16 @@
 			(type default)
 		)
 		(uuid "3ca92ab0-5bde-4feb-a5b8-75c19683a698")
+	)
+	(wire
+		(pts
+			(xy 59.69 134.62) (xy 59.69 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3e44fe5c-0859-43f7-b5cf-4e5f895dfa0f")
 	)
 	(wire
 		(pts
@@ -4338,6 +4803,26 @@
 	)
 	(wire
 		(pts
+			(xy 58.42 143.51) (xy 59.69 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "43ae6b02-455f-45cd-bfa8-316eab11c67d")
+	)
+	(wire
+		(pts
+			(xy 62.23 162.56) (xy 62.23 165.1)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "48019451-0138-4051-8b13-8509d4fa77fa")
+	)
+	(wire
+		(pts
 			(xy 130.81 179.07) (xy 130.81 181.61)
 		)
 		(stroke
@@ -4345,6 +4830,26 @@
 			(type default)
 		)
 		(uuid "4a03bf57-c9bc-4512-a7bc-36f5a09d6935")
+	)
+	(wire
+		(pts
+			(xy 87.63 153.67) (xy 87.63 158.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4e1ac9c0-4fcc-4feb-aabc-81d1a800cbc5")
+	)
+	(wire
+		(pts
+			(xy 95.25 161.29) (xy 83.82 161.29)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4f7e5516-8935-44fd-9c6b-ea344ba6ab55")
 	)
 	(wire
 		(pts
@@ -4378,6 +4883,16 @@
 	)
 	(wire
 		(pts
+			(xy 22.86 148.59) (xy 22.86 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "56ad59b5-e7d7-4e3a-bd1c-78ccf8a2933a")
+	)
+	(wire
+		(pts
 			(xy 125.73 130.81) (xy 130.81 130.81)
 		)
 		(stroke
@@ -4405,6 +4920,16 @@
 			(type default)
 		)
 		(uuid "60d6d99f-3123-47ef-9eb9-9d8f1d490f59")
+	)
+	(wire
+		(pts
+			(xy 58.42 161.29) (xy 62.23 161.29)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "61892e6b-c1b9-4da0-bdcf-c15f39b39626")
 	)
 	(wire
 		(pts
@@ -4455,6 +4980,36 @@
 			(type default)
 		)
 		(uuid "72dbc4b1-bde7-444f-bae7-ed1db12c3568")
+	)
+	(wire
+		(pts
+			(xy 59.69 143.51) (xy 60.96 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "73a5f798-1aa3-4099-8586-2b0bfcb9623c")
+	)
+	(wire
+		(pts
+			(xy 91.44 163.83) (xy 95.25 163.83)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "74362149-2fe5-406c-bbbd-9b52232b4ba5")
+	)
+	(wire
+		(pts
+			(xy 54.61 162.56) (xy 62.23 162.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7ba69d95-252b-47ec-984c-87a528eb6e43")
 	)
 	(wire
 		(pts
@@ -4525,6 +5080,26 @@
 			(type default)
 		)
 		(uuid "98398aaa-8f96-4964-b9fd-1bf8c8a0a5a0")
+	)
+	(wire
+		(pts
+			(xy 83.82 148.59) (xy 58.42 148.59)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9a193496-297c-4601-81d8-b4fc221efed6")
+	)
+	(wire
+		(pts
+			(xy 22.86 134.62) (xy 59.69 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9d722deb-7661-4764-bd22-a54c5a6cd844")
 	)
 	(wire
 		(pts
@@ -4618,6 +5193,16 @@
 	)
 	(wire
 		(pts
+			(xy 58.42 153.67) (xy 87.63 153.67)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ae11dea0-dcbe-45a4-a547-1452b952bddb")
+	)
+	(wire
+		(pts
 			(xy 110.49 78.74) (xy 101.6 78.74)
 		)
 		(stroke
@@ -4655,6 +5240,16 @@
 			(type default)
 		)
 		(uuid "ba4e4af0-c6d8-4203-b6cb-d3a6bf55d2dc")
+	)
+	(wire
+		(pts
+			(xy 83.82 161.29) (xy 83.82 148.59)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bcf23c42-50a5-4faf-ae31-c912b1cbd7f3")
 	)
 	(wire
 		(pts
@@ -4758,6 +5353,26 @@
 	)
 	(wire
 		(pts
+			(xy 58.42 151.13) (xy 91.44 151.13)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d9259723-52d3-4381-8529-64c7de96d7de")
+	)
+	(wire
+		(pts
+			(xy 91.44 151.13) (xy 91.44 163.83)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d9768a0d-8ea5-4a5d-8881-14b295b5664e")
+	)
+	(wire
+		(pts
 			(xy 163.83 105.41) (xy 163.83 109.22)
 		)
 		(stroke
@@ -4798,6 +5413,16 @@
 	)
 	(wire
 		(pts
+			(xy 87.63 158.75) (xy 95.25 158.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eba2f0d3-6cb7-433f-9c7f-627290a30493")
+	)
+	(wire
+		(pts
 			(xy 104.14 48.26) (xy 104.14 53.34)
 		)
 		(stroke
@@ -4825,6 +5450,16 @@
 			(type default)
 		)
 		(uuid "f806ebb0-0a58-44fe-90a7-d5a0f330bbfb")
+	)
+	(wire
+		(pts
+			(xy 22.86 165.1) (xy 54.61 165.1)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f89451a0-0cb3-4acb-8537-4f7e030cf3b9")
 	)
 	(wire
 		(pts
@@ -5287,6 +5922,28 @@
 		(uuid "dcf470af-f21c-4396-bb07-917e19e49b15")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 141.0566 118.1894 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "3.3V"
+		(shape input)
+		(at 60.96 143.51 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "ffd8f385-48bd-4c11-918d-7c4f1fb2dea7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 67.3966 143.5894 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6345,6 +7002,109 @@
 			(project "Sandwich Panel - Controller v1-2 ESP32"
 				(path "/5740c959-93d8-47fd-8f68-62f0109e753d"
 					(reference "#PWR015")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "INMP441:INMP441")
+		(at 40.64 151.13 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "5c9ae26a-3c74-42dc-82b3-5cb01efef370")
+		(property "Reference" "MK1"
+			(at 40.64 135.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "INMP441"
+			(at 40.64 138.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "inmp441:MIC_INMP441"
+			(at 81.788 176.022 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify bottom)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 40.64 151.13 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 40.64 151.13 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MANUFACTURER" "TDK InvenSense"
+			(at 66.294 173.482 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify bottom)
+				(hide yes)
+			)
+		)
+		(pin "7"
+			(uuid "5b7b004b-9016-4cbf-9ebe-2a21bf0286f1")
+		)
+		(pin "9"
+			(uuid "cd18b49d-47de-4a22-a26f-e88d32ca4aca")
+		)
+		(pin "2"
+			(uuid "976d2bfb-7097-447d-a82a-5b06eb834769")
+		)
+		(pin "5_1"
+			(uuid "1d156d06-2965-4af7-bf82-5677dfcfbffe")
+		)
+		(pin "4"
+			(uuid "747e4cb1-855d-4c49-9e34-d84b8846e22f")
+		)
+		(pin "3"
+			(uuid "54839b7f-9dc9-47f4-8b8f-399ee6090ae8")
+		)
+		(pin "1"
+			(uuid "4157f65a-006e-4911-aa0a-2e13e5ddecff")
+		)
+		(pin "6"
+			(uuid "bb1ecd7e-270a-4924-b04c-ee73574bb800")
+		)
+		(pin "8"
+			(uuid "2cde7b14-a1e9-4640-b4e6-0d4441bdb56b")
+		)
+		(pin "5_2"
+			(uuid "5539a657-4646-4f09-8919-962994e3166b")
+		)
+		(instances
+			(project ""
+				(path "/5740c959-93d8-47fd-8f68-62f0109e753d"
+					(reference "MK1")
 					(unit 1)
 				)
 			)
@@ -7486,6 +8246,71 @@
 			(project "Sandwich Panel - Controller v1-2 ESP32"
 				(path "/5740c959-93d8-47fd-8f68-62f0109e753d"
 					(reference "R1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 62.23 165.1 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "b3c557e5-6f22-4ab3-bb30-9a381958524b")
+		(property "Reference" "#PWR04"
+			(at 62.23 171.45 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 62.23 170.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 62.23 165.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 62.23 165.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 62.23 165.1 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "4c2bb87f-7f50-42ec-846a-4d3ab3f1f257")
+		)
+		(instances
+			(project "Sandwich Panel - Controller v1-2 ESP32"
+				(path "/5740c959-93d8-47fd-8f68-62f0109e753d"
+					(reference "#PWR04")
 					(unit 1)
 				)
 			)
