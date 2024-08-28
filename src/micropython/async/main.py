@@ -6,10 +6,11 @@ from touch import Touch
 
 async def main():
     set_global_exception()
+    touch0 = Touch(Pin(2))
+    #touch1 = Touch(Pin(?))
     m = Mic()
-    t1 = Touch(Pin(2))
-    #t2 = Touch(Pin(?))
-    await asyncio.gather(m.start(), t1.start())
+
+    await asyncio.gather(m.start(), touch0.start())
 try:
     asyncio.run(main())
 finally:
