@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "inmp441")(type "KiCad")(uri "${KIPRJMOD}/parts/inmp441")(options "")(descr ""))
+)
