@@ -37,7 +37,7 @@ class Mic():
         self.change_display_mode(1)
         
         #event required to change this value
-        self.noise_floor=100
+        self.noise_floor=1000
         
         #calculate the defined frequencies of the musical notes         
         notes=np.arange(1.,85.)
@@ -45,13 +45,24 @@ class Mic():
         #print("note frequencies: ", note_frequencies)
         
         #event required to change note_per_led number
-        notes_per_led=2  #[1,2,3,4,6,12]
+        notes_per_led=4  #[1,2,3,4,6,12]
+        
+        self.length_of_leds=13
+        self.ring_buffer_hues=np.zeros((3,12))
+        self.ring_buffer_intensities=np.zeros((3,12))
+        self.buffer_index=0
         
         #array splice the notes according to the user defined values
         #event required to change note at start of array slice 
-        start_note=12
-        borders=note_frequencies[start_note::notes_per_led]
-        borders=borders[start_note:start_note+13:]
+        start_note=15
+        #borders=note_frequencies[start_note::notes_per_led]#this creates a border exactly on a note. What is needed is a border halfway between one note and the next. I have frequencies, I need to know what note is at the border, index the next note, and take the middle
+        borders=np.zeros(self.length_of_leds)
+        for i in range(self.length_of_leds):
+            start_=note_frequencies[start_note+(i*notes_per_led)]
+            next_=note_frequencies[start_note+(i*notes_per_led)+1]
+            border_location=start_+(next_-start_)/2
+            borders[i]=border_location
+        #borders=borders[start_note:start_note+13:]
         #print(len(borders))
         
         #figure out what tones correspond to what magnitudes out of the fft, with respect to the mic sampling parameters
@@ -59,7 +70,7 @@ class Mic():
         #print(self.tones)       
         self.calculate_fft_bin_boundaries(borders)
         
-#         self.set_hues()
+        #set the colours of notes in synaesthesia mode
         hue_max=65535 #2^16, according to docs in leds.py
         hue_diff=5000
         base_hue=40000
@@ -80,8 +91,8 @@ class Mic():
                 if self.tones[i] <= boundary < self.tones[i + 1]:
                     crossovers.append((i, self.tones[i]))
         #print(crossovers)
-        self.fft_ranges=[(tup[0],crossovers[i+1][0]-15) for i, tup in enumerate(crossovers[:-1])]
-        print(self.fft_ranges)
+        self.fft_ranges=[(tup[0],crossovers[i+1][0]) for i, tup in enumerate(crossovers[:-1])]
+        #print(self.fft_ranges)
     
     def change_display_mode(self,mode):
         self.mode=self.modes[mode]
@@ -116,8 +127,7 @@ class Mic():
                 if normalized_sum < self.noise_floor:
                     normalized_sum=0
                     dominant_mag = magnitudes[f[0]]
-                    dominant_tone = self.tones[f][0]
-
+                    dominant_tone = self.tones[f[0]]
                 else:
                     normalized_sum = slice_sum
                     dominant_mag = magnitudes[f[0]]
@@ -134,7 +144,7 @@ class Mic():
             fftCalc=fftCalc[:num_led_bins_calculated:]
             dominants=dominants[:num_led_bins_calculated:]
         
-        print(fftCalc)
+#         print(fftCalc)
 #         print(dominants)
         return fftCalc,dominants
 
@@ -188,9 +198,6 @@ class Mic():
                 
     #             t4 = ticks_us()
                 # Use async to call show_hsv for valid LEDs
-                # 114154 µs
-                #for i, hue, value in zip(indices[valid_indices], intensity_hues[valid_indices], values[valid_indices]):
-                    #await leds.show_hsv(i, int(hue), 255, int(value/10))
                 for i in range(0,len(fft_mags_array)):
                     await leds.show_hsv(i, int(intensity_hues[i]), 255, int(fft_mags_array[i]))            
     #             t5 = ticks_us()
@@ -206,13 +213,27 @@ class Mic():
                         note=0
                     dominants_notes[i]=note%12
                     current_hues[i]=self.note_hues[note%12]
-
                     
 #                 print("dominants_notes:",dominants_notes)
 #                 print("current hues:",current_hues)
-                
+#                 print(fft_mags_array)
                 for i in range(0,len(fft_mags_array)):
-                    #await leds.show_hsv(i, 0, 0, 0) #the actual issue seems to be coming from the fft
-                    await leds.show_hsv(i, int(current_hues[i]), 255, int(fft_mags_array[i])) 
-    
+                    #await leds.show_hsv(led_number, hue, saturation, brightness) #the actual issue seems to be coming from the fft
+                    await leds.show_hsv(i, int(current_hues[i]), 255, int(fft_mags_array[i]))                               
+#                     await leds.show_hsv(i+self.length_of_leds-1, int(self.ring_buffer_hues[self.buffer_index+1][i]), 255, int(self.ring_buffer_intensities[self.buffer_index+1][i]))
+#                     await leds.show_hsv(i+(self.length_of_leds*2)-2, int(self.ring_buffer_hues[self.buffer_index+2][i]), 255, int(self.ring_buffer_intensities[self.buffer_index+1][i]))
+#                     
+#                 self.ring_buffer_hues[(self.buffer_index+2)] = self.ring_buffer_hues[(self.buffer_index+1)]
+#                 self.ring_buffer_intensities[(self.buffer_index+2)] = self.ring_buffer_intensities[(self.buffer_index+1)]
+#                     
+#                 self.ring_buffer_hues[(self.buffer_index+1)] = current_hues
+#                 self.ring_buffer_intensities[(self.buffer_index+1)] = fft_mags_array
+#                     print(self.ring_buffer_intensities)
+                    
+#                     self.buffer_index+=1
+#                     self.buffer_index%=2
+#                     
+                    #ring_buffer[i+self.length_of_leds-1] #sorry for the index messing around
+                    
+                    
 #             print("mic sampling:", ticks_diff(t1, t0),"fft calc and bin sum",ticks_diff(t3,t2),'led_write loop:',ticks_diff(t5, t4))
