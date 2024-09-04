@@ -153,8 +153,11 @@ class Mic():
         leds = Leds()
         while True:
 #             t0 = ticks_us()
-            await asyncio.StreamReader(self.microphone).readinto(rawsamples)
-            samples = np.frombuffer(rawsamples, dtype=np.int16) # 150 µs
+            # Use non-blocking instead of streaming mode since we are in a loop!
+            num_read = self.microphone.readinto(rawsamples)
+
+#            await asyncio.StreamReader(self.microphone).readinto(rawsamples)
+#            samples = np.frombuffer(rawsamples, dtype=np.int16) # 150 µs
 #             t1 = ticks_us()
                         
 #             t2 = ticks_us()
