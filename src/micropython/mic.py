@@ -138,7 +138,7 @@ class Mic():
             fftCalc.append(normalized_sum)
             dominants.append(dominant_tone)
 
-
+        num_led_bins_calculated=12
         if len(fftCalc)>num_led_bins_calculated:
             fftCalc=fftCalc[:num_led_bins_calculated:]
             dominants=dominants[:num_led_bins_calculated:]
