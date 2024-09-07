@@ -28,8 +28,8 @@ WS = Pin(17)
 class Mic():
     def __init__(self):
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
-                              bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
-                              ibuf=8096)
+                                bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
+                                ibuf=8096)
 
         self.modes=["Intensity","Synesthesia"]
 
@@ -149,12 +149,14 @@ class Mic():
     async def start(self):
         leds = Leds()
         while True:
-#             t0 = ticks_us()
+            t0 = ticks_us()
             # Use non-blocking instead of streaming mode since we are in a loop!
             num_read = self.microphone.readinto(rawsamples)
 
-            samples = np.frombuffer(rawsamples, dtype=np.int16) # 150 µs
-#             t2 = ticks_us()
+            samples = np.frombuffer(rawsamples, dtype=np.int16)
+            t1 = ticks_us()
+            print("mic sampling:", ticks_diff(t1, t0))
+
             # calculate fft_mag from samples
             fft_mags,dominants = await self.mini_wled(samples) # 19863 µs
 #             t3 = ticks_us()
