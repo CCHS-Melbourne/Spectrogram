@@ -4,7 +4,7 @@ import asyncio
 from leds import Leds
 from ulab import numpy as np
 from machine import Pin, I2S
-from time import ticks_us, ticks_diff
+from time import ticks_ms, ticks_diff
 
 # 512 in the FFT 16000/512 ~ 30Hz update.
 # DMA buffer should be at least twice, rounded to power of two.
@@ -103,7 +103,7 @@ class Mic():
 
     async def mini_wled(self, samples):
         #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)#, log=True)
-        magnitudes = utils.spectrogram(samples)
+        magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)
 
         fftCalc=[]
         dominants=[]
@@ -125,7 +125,9 @@ class Mic():
                     where_dominant_mag=np.argmax(magnitudes[f[0]:f[1]])+f[0] 
                     dominant_tone=self.tones[where_dominant_mag]
 
-            except ZeroDivisionError: #which crops up if the number of notes in a bin is too few, as in low note_per_bin cases
+            # Crops up if the number of notes in a bin is too few.
+            # As in low note_per_bin cases.
+            except ZeroDivisionError:
                 if normalized_sum < self.noise_floor:
                     normalized_sum=0
                     dominant_mag = magnitudes[f[0]]
@@ -148,18 +150,24 @@ class Mic():
 
     async def start(self):
         leds = Leds()
-        while True:
-            t0 = ticks_us()
-            # Use non-blocking instead of streaming mode since we are in a loop!
-            num_read = self.microphone.readinto(rawsamples)
 
-            samples = np.frombuffer(rawsamples, dtype=np.int16)
-            t1 = ticks_us()
-            print("mic sampling:", ticks_diff(t1, t0))
+        # Callback gets triggered when buffer is full.
+        # Needs to be defined but we don't use it ¯\_(ツ)_/¯
+        self.microphone.irq(lambda noop: noop)
+
+        while True:
+            t0 = ticks_ms()
+            # Use non-blocking instead of streaming mode since we are in a loop!
+            num_read = self.microphone.readinto(rawsamples) # 1ms !
+
+            samples = np.frombuffer(rawsamples[:num_read], dtype=np.int16)
+            t1 = ticks_ms()
+            print("mic sampling:  ", ticks_diff(t1, t0) , "ms")
 
             # calculate fft_mag from samples
-            fft_mags,dominants = await self.mini_wled(samples) # 19863 µs
-#             t3 = ticks_us()
+            fft_mags,dominants = await self.mini_wled(samples)
+            t2 = ticks_ms()
+            print("wled function:", ticks_diff(t2, t1), "ms") # 40ms
 
             # Assuming fft_mags is a numpy array
             fft_mags_array = np.array(fft_mags)
@@ -194,6 +202,7 @@ class Mic():
                 for i in range(0,len(fft_mags_array)):
                     await leds.show_hsv(i, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
 
+            t3 = ticks_ms()
             if self.mode=="Synesthesia":
                 dominants_array=np.array(dominants)
                 dominants_notes=np.arange(len(dominants_array))
@@ -211,3 +220,5 @@ class Mic():
 
                 for i in range(0,len(fft_mags_array)):
                     await leds.show_hsv(i, int(current_hues[i]), 255, int(fft_mags_array[i]))
+
+            print("synesthesia :    ", ticks_diff(t3, t2), "ms") # 2ms !
