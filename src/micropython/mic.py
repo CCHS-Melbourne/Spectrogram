@@ -21,6 +21,9 @@ scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of t
                                         # avoids memory fragmentation and thus OOM errors
 
 ID = 0
+SD = Pin(7)
+SCK = Pin(8)
+WS = Pin(9)
 
 class Mic():
     def __init__(self):
