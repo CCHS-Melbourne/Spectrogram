@@ -21,9 +21,6 @@ scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of t
                                         # avoids memory fragmentation and thus OOM errors
 
 ID = 0
-SD = Pin(15)
-SCK = Pin(16)
-WS = Pin(17)
 
 class Mic():
     def __init__(self):
@@ -34,11 +31,14 @@ class Mic():
         self.modes=["Intensity","Synesthesia"]
 
         # Event required to change this mode
-        self.change_display_mode(1)
+        self.change_display_mode(0)
 
         # Event required to change this value
         self.noise_floor=1000
-
+        
+        # Event required to change this value
+        self.brightness=1 #[0-1]
+        
         # Calculate the defined frequencies of the musical notes
         notes=np.arange(1.,85.)
         note_frequencies=TUNING_A4_HZ*(2**((notes-49)/12))
@@ -47,10 +47,10 @@ class Mic():
         # Event required to change note_per_led number
         notes_per_led=4  #[1,2,3,4,6,12]
 
-        self.length_of_leds=13
-        self.ring_buffer_hues=np.zeros((3,12))
-        self.ring_buffer_intensities=np.zeros((3,12))
-        self.buffer_index=0
+        self.length_of_leds=12
+#         self.ring_buffer_hues=np.zeros((3,self.length_of_leds))
+#         self.ring_buffer_intensities=np.zeros((3,self.length_of_leds))
+#         self.buffer_index=0
 
         # Array splice the notes according to the user defined values
         # Event required to change note at start of array slice
@@ -103,7 +103,8 @@ class Mic():
 
     async def mini_wled(self, samples):
         #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)#, log=True)
-        magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)
+        #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)
+        magnitudes = utils.spectrogram(samples)
 
         fftCalc=[]
         dominants=[]
@@ -162,12 +163,12 @@ class Mic():
 
             samples = np.frombuffer(rawsamples[:num_read], dtype=np.int16)
             t1 = ticks_ms()
-            print("mic sampling:  ", ticks_diff(t1, t0) , "ms")
+            #print("mic sampling:  ", ticks_diff(t1, t0) , "ms")
 
             # calculate fft_mag from samples
             fft_mags,dominants = await self.mini_wled(samples)
             t2 = ticks_ms()
-            print("wled function:", ticks_diff(t2, t1), "ms") # 40ms
+            #print("wled function:", ticks_diff(t2, t1), "ms") # 40ms
 
             # Assuming fft_mags is a numpy array
             fft_mags_array = np.array(fft_mags)
@@ -200,7 +201,15 @@ class Mic():
 
                 # Use async to call show_hsv for valid LEDs
                 for i in range(0,len(fft_mags_array)):
-                    await leds.show_hsv(i, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#                     self.channel1hues[i][self.bufferIndex+1%3]=hue 
+                    await leds.show_hsv(i, int(intensity_hues[i]), 255, int((fft_mags_array[i])*self.brightness))
+                    
+###See line 50, need to have a 'buffer' for intensities and for magnitudes,  
+#                     await leds.show_hsv(i*(bufferIndex+2%3), int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#                     await leds.show_hsv(i, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#    
+#                 self.bufferIndex+=1
+#                 self.bufferIndex%=3 #update ring buffer index
 
             t3 = ticks_ms()
             if self.mode=="Synesthesia":
@@ -221,4 +230,4 @@ class Mic():
                 for i in range(0,len(fft_mags_array)):
                     await leds.show_hsv(i, int(current_hues[i]), 255, int(fft_mags_array[i]))
 
-            print("synesthesia :    ", ticks_diff(t3, t2), "ms") # 2ms !
+            #print("synesthesia :    ", ticks_diff(t3, t2), "ms") # 2ms !
