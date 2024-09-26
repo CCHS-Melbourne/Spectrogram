@@ -6,7 +6,7 @@ from touch import Touch
 
 async def main():
     set_global_exception()
-    touch0 = Touch(Pin(2))
+    touch0 = Touch(Pin(11))
     #touch1 = Touch(Pin(?))
     m = Mic()
 

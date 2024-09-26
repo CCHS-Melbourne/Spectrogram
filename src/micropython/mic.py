@@ -40,7 +40,7 @@ class Mic():
         self.noise_floor=1000
         
         # Event required to change this value
-        self.brightness=1 #[0-1]
+        self.brightness=0.2 #[0-1]
         
         # Calculate the defined frequencies of the musical notes
         notes=np.arange(1.,85.)
@@ -50,10 +50,10 @@ class Mic():
         # Event required to change note_per_led number
         notes_per_led=4  #[1,2,3,4,6,12]
 
-        self.length_of_leds=12
-#         self.ring_buffer_hues=np.zeros((3,self.length_of_leds))
-#         self.ring_buffer_intensities=np.zeros((3,self.length_of_leds))
-#         self.buffer_index=0
+        self.length_of_leds=13 #actually needs to be number of leds+1, due to how the note border finding/zipping function organizes borders
+        self.ring_buffer_hues=np.zeros((3,self.length_of_leds-1))
+        self.ring_buffer_intensities=np.zeros((3,self.length_of_leds-1))
+        self.buff_index=0
 
         # Array splice the notes according to the user defined values
         # Event required to change note at start of array slice
@@ -144,7 +144,8 @@ class Mic():
             fftCalc.append(normalized_sum)
             dominants.append(dominant_tone)
 
-        num_led_bins_calculated=12
+        num_led_bins_calculated=self.length_of_leds
+#         print("len of fftCalc in wled",len(fftCalc))
         if len(fftCalc)>num_led_bins_calculated:
             fftCalc=fftCalc[:num_led_bins_calculated:]
             dominants=dominants[:num_led_bins_calculated:]
@@ -206,10 +207,22 @@ class Mic():
                 for i in range(0,len(fft_mags_array)):
 #                     self.channel1hues[i][self.bufferIndex+1%3]=hue 
                     await leds.show_hsv(i, int(intensity_hues[i]), 255, int((fft_mags_array[i])*self.brightness))
+                    #sorry about the -1s in the first terms, those are due to the length_of_leds being reduced by other array calculations/border conditions 
+                    #the negative modulo terms in the second and fourth terms, however, are needed to get the ring buffer to work. 
+                    await leds.show_hsv(i+self.length_of_leds-1, int(self.ring_buffer_hues[(self.buff_index-2)%-3][i]), 255, int((self.ring_buffer_intensities[(self.buff_index-2)%-3][i])*self.brightness))
+                    await leds.show_hsv(i+self.length_of_leds*2-2, int(self.ring_buffer_hues[(self.buff_index-1)%-3][i]), 255, int((self.ring_buffer_intensities[(self.buff_index-1)%-3][i])*self.brightness))
+#                 print("length of buffer",len(self.ring_buffer_hues[(self.buff_index-1)%-3]))
+#                 print("length of fft_mags",len(fft_mags_array))
+                self.ring_buffer_hues[(self.buff_index-1)%-3]=intensity_hues
+                self.ring_buffer_intensities[(self.buff_index-1)%-3]=fft_mags_array
+                self.buff_index-=1
+                self.buff_index%=-3
+                await leds.write() #Is this a performance gain? Only write LEDs when all of the data points have been updated. This replaces the neopix.write() in the leds.py show_hsv function, which peforms the write opertation for each pixel
+            
                     
 ###See line 50, need to have a 'buffer' for intensities and for magnitudes,  
-#                     await leds.show_hsv(i*(bufferIndex+2%3), int(intensity_hues[i]), 255, int(fft_mags_array[i]))
-#                     await leds.show_hsv(i, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#                     await leds.show_hsv(i*2, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#                     await leds.show_hsv(i*3, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
 #    
 #                 self.bufferIndex+=1
 #                 self.bufferIndex%=3 #update ring buffer index

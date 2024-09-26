@@ -47,7 +47,7 @@ class Touch:
     async def rawstate(self):
         time.sleep_ms(100) # Dirty workaround: Let the sensor stabilise
         rv = self._pad.read()  # ~220μs
-        #print(rv)
+        print(rv)
         if rv > self._rawval:  # Either initialisation or pad was touched
             self._rawval = rv  # when initialised and has now been released
             self._thresh = (rv * self.thresh) >> 8
