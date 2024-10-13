@@ -175,14 +175,19 @@ class Mic():
             #print("wled function:", ticks_diff(t2, t1), "ms") # 40ms
 
             # Assuming fft_mags is a numpy array
-            fft_mags_array = np.array(fft_mags)
+            fft_mags_array_raw = np.array(fft_mags)
+            V_ref=8388607 #this value is microphone dependant, for the DFROBOT mic, which is 24-bit I2S audio, that value is apparently 8,388,607 
+            db_scaling=np.array([20*math.log10(fft_mags_array_raw[index]/V_ref) if value != 0 else -80 for index, value in enumerate(fft_mags_array_raw) ]) #the magic number -80 in this code is -80db, the lowest value on my phone spectrogram app, but it's typically recommended to be -inf
+            #print(db_scaling)
 
             # FFTscaling only the fft_mags_array, when quiet, the maximum ambient noise dynamically becomes bright, which is distracting.
             # We need to make noise an ambient low level of intensity
             brightness_range=np.array([0,255])
-            summed_magnitude_range=np.array([0, 50000])
+            highest_db=-40
+            summed_magnitude_range=np.array([-80, highest_db]) #values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
+            
             #scale to 0-255 range, can/should scale up for more hue resolution
-            fft_mags_array = np.interp(fft_mags_array, summed_magnitude_range, brightness_range)
+            fft_mags_array = np.interp(db_scaling, summed_magnitude_range, brightness_range)
 
             # Apply cosmetics to values calculated above
             if self.mode=="Intensity":
