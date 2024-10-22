@@ -108,7 +108,8 @@ class Mic():
         #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)#, log=True)
         #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)
         magnitudes = utils.spectrogram(samples)
-
+        #print("mags",magnitudes)
+        
         fftCalc=[]
         dominants=[]
 
@@ -188,7 +189,8 @@ class Mic():
             
             #scale to 0-255 range, can/should scale up for more hue resolution
             fft_mags_array = np.interp(db_scaling, summed_magnitude_range, brightness_range)
-
+            #(fft_mags_array)
+            
             # Apply cosmetics to values calculated above
             if self.mode=="Intensity":
                 # Create masks for different hue ranges
