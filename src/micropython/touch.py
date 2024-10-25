@@ -13,12 +13,14 @@ class Touch:
     debounce_ms = 50
 
     def __init__(self, pin):
+        self._state = False
         self._tf = False
         self._thresh = 0  # Detection threshold
         self._rawval = 0
-                          # https://github.com/micropython/micropython/issues/13178#issuecomment-2254331069
-        #time.sleep_ms(500) # Dirty workaround: Let the sensor stabilise on init
+        # https://github.com/micropython/micropython/issues/13178#issuecomment-2254331069
+        time.sleep_ms(500) # Dirty workaround: Let the sensor stabilise on init
         try:
+            print("Initialising touch sensor")
             self._pad = TouchPad(pin)
         except ValueError:
             raise ValueError(pin)  # Let's have a bit of information :)
@@ -35,14 +37,12 @@ class Touch:
             await asyncio.sleep_ms(self.debounce_ms)
 
     async def _check(self, state):
-        pass
-        # if state == self._state:
-        #     return
-        # State has changed: act on it now.
-        # self._state = state
-        # if state:  # Button pressed: launch pressed func
-        #     print("meow")
-        #     self._state = False
+        if state == self._state:
+            return
+        #State has changed: act on it now.
+        self._state = state
+        if state:  # Button pressed: launch pressed func
+            self._state = False
 
     async def rawstate(self):
         time.sleep_ms(100) # Dirty workaround: Let the sensor stabilise
