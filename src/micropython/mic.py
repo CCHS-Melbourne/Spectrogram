@@ -4,7 +4,7 @@ import asyncio
 from leds import Leds
 from ulab import numpy as np
 from machine import Pin, I2S
-from time import ticks_us, ticks_diff
+from time import ticks_ms, ticks_diff
 
 # 512 in the FFT 16000/512 ~ 30Hz update.
 # DMA buffer should be at least twice, rounded to power of two.
@@ -21,24 +21,27 @@ scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of t
                                         # avoids memory fragmentation and thus OOM errors
 
 ID = 0
-SD = Pin(15)
-SCK = Pin(16)
-WS = Pin(17)
+SD = Pin(7)
+SCK = Pin(8)
+WS = Pin(9)
 
 class Mic():
     def __init__(self):
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
-                              bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
-                              ibuf=8096)
+                                bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
+                                ibuf=8096)
 
         self.modes=["Intensity","Synesthesia"]
 
         # Event required to change this mode
-        self.change_display_mode(1)
+        self.change_display_mode(0)
 
         # Event required to change this value
         self.noise_floor=1000
-
+        
+        # Event required to change this value
+        self.brightness=0.2 #[0-1]
+        
         # Calculate the defined frequencies of the musical notes
         notes=np.arange(1.,85.)
         note_frequencies=TUNING_A4_HZ*(2**((notes-49)/12))
@@ -47,10 +50,10 @@ class Mic():
         # Event required to change note_per_led number
         notes_per_led=4  #[1,2,3,4,6,12]
 
-        self.length_of_leds=13
-        self.ring_buffer_hues=np.zeros((3,12))
-        self.ring_buffer_intensities=np.zeros((3,12))
-        self.buffer_index=0
+        self.length_of_leds=13 #actually needs to be number of leds+1, due to how the note border finding/zipping function organizes borders
+        self.ring_buffer_hues=np.zeros((3,self.length_of_leds-1))
+        self.ring_buffer_intensities=np.zeros((3,self.length_of_leds-1))
+        self.buff_index=0
 
         # Array splice the notes according to the user defined values
         # Event required to change note at start of array slice
@@ -103,8 +106,10 @@ class Mic():
 
     async def mini_wled(self, samples):
         #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)#, log=True)
+        #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)
         magnitudes = utils.spectrogram(samples)
-
+        #print("mags",magnitudes)
+        
         fftCalc=[]
         dominants=[]
 
@@ -125,7 +130,9 @@ class Mic():
                     where_dominant_mag=np.argmax(magnitudes[f[0]:f[1]])+f[0] 
                     dominant_tone=self.tones[where_dominant_mag]
 
-            except ZeroDivisionError: #which crops up if the number of notes in a bin is too few, as in low note_per_bin cases
+            # Crops up if the number of notes in a bin is too few.
+            # As in low note_per_bin cases.
+            except ZeroDivisionError:
                 if normalized_sum < self.noise_floor:
                     normalized_sum=0
                     dominant_mag = magnitudes[f[0]]
@@ -138,7 +145,8 @@ class Mic():
             fftCalc.append(normalized_sum)
             dominants.append(dominant_tone)
 
-
+        num_led_bins_calculated=self.length_of_leds
+#         print("len of fftCalc in wled",len(fftCalc))
         if len(fftCalc)>num_led_bins_calculated:
             fftCalc=fftCalc[:num_led_bins_calculated:]
             dominants=dominants[:num_led_bins_calculated:]
@@ -148,27 +156,41 @@ class Mic():
 
     async def start(self):
         leds = Leds()
-        while True:
-#             t0 = ticks_us()
-            # Use non-blocking instead of streaming mode since we are in a loop!
-            num_read = self.microphone.readinto(rawsamples)
 
-            samples = np.frombuffer(rawsamples, dtype=np.int16) # 150 µs
-#             t2 = ticks_us()
+        # Callback gets triggered when buffer is full.
+        # Needs to be defined but we don't use it ¯\_(ツ)_/¯
+        self.microphone.irq(lambda noop: noop)
+
+        while True:
+            t0 = ticks_ms()
+            # Use non-blocking instead of streaming mode since we are in a loop!
+            num_read = self.microphone.readinto(rawsamples) # 1ms !
+
+            samples = np.frombuffer(rawsamples[:num_read], dtype=np.int16)
+            t1 = ticks_ms()
+            #print("mic sampling:  ", ticks_diff(t1, t0) , "ms")
+
             # calculate fft_mag from samples
-            fft_mags,dominants = await self.mini_wled(samples) # 19863 µs
-#             t3 = ticks_us()
+            fft_mags,dominants = await self.mini_wled(samples)
+            t2 = ticks_ms()
+            #print("wled function:", ticks_diff(t2, t1), "ms") # 40ms
 
             # Assuming fft_mags is a numpy array
-            fft_mags_array = np.array(fft_mags)
+            fft_mags_array_raw = np.array(fft_mags)
+            V_ref=8388607 #this value is microphone dependant, for the DFROBOT mic, which is 24-bit I2S audio, that value is apparently 8,388,607 
+            db_scaling=np.array([20*math.log10(fft_mags_array_raw[index]/V_ref) if value != 0 else -80 for index, value in enumerate(fft_mags_array_raw) ]) #the magic number -80 in this code is -80db, the lowest value on my phone spectrogram app, but it's typically recommended to be -inf
+            #print(db_scaling)
 
             # FFTscaling only the fft_mags_array, when quiet, the maximum ambient noise dynamically becomes bright, which is distracting.
             # We need to make noise an ambient low level of intensity
             brightness_range=np.array([0,255])
-            summed_magnitude_range=np.array([0, 50000])
+            highest_db=-40
+            summed_magnitude_range=np.array([-80, highest_db]) #values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
+            
             #scale to 0-255 range, can/should scale up for more hue resolution
-            fft_mags_array = np.interp(fft_mags_array, summed_magnitude_range, brightness_range)
-
+            fft_mags_array = np.interp(db_scaling, summed_magnitude_range, brightness_range)
+            #(fft_mags_array)
+            
             # Apply cosmetics to values calculated above
             if self.mode=="Intensity":
                 # Create masks for different hue ranges
@@ -190,8 +212,29 @@ class Mic():
 
                 # Use async to call show_hsv for valid LEDs
                 for i in range(0,len(fft_mags_array)):
-                    await leds.show_hsv(i, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#                     self.channel1hues[i][self.bufferIndex+1%3]=hue 
+                    await leds.show_hsv(i, int(intensity_hues[i]), 255, int((fft_mags_array[i])*self.brightness))
+                    #sorry about the -1s in the first terms, those are due to the length_of_leds being reduced by other array calculations/border conditions 
+                    #the negative modulo terms in the second and fourth terms, however, are needed to get the ring buffer to work. 
+                    await leds.show_hsv(i+self.length_of_leds-1, int(self.ring_buffer_hues[(self.buff_index-2)%-3][i]), 255, int((self.ring_buffer_intensities[(self.buff_index-2)%-3][i])*self.brightness))
+                    await leds.show_hsv(i+self.length_of_leds*2-2, int(self.ring_buffer_hues[(self.buff_index-1)%-3][i]), 255, int((self.ring_buffer_intensities[(self.buff_index-1)%-3][i])*self.brightness))
+#                 print("length of buffer",len(self.ring_buffer_hues[(self.buff_index-1)%-3]))
+#                 print("length of fft_mags",len(fft_mags_array))
+                self.ring_buffer_hues[(self.buff_index-1)%-3]=intensity_hues
+                self.ring_buffer_intensities[(self.buff_index-1)%-3]=fft_mags_array
+                self.buff_index-=1
+                self.buff_index%=-3
+                await leds.write() #Is this a performance gain? Only write LEDs when all of the data points have been updated. This replaces the neopix.write() in the leds.py show_hsv function, which peforms the write opertation for each pixel
+            
+                    
+###See line 50, need to have a 'buffer' for intensities and for magnitudes,  
+#                     await leds.show_hsv(i*2, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#                     await leds.show_hsv(i*3, int(intensity_hues[i]), 255, int(fft_mags_array[i]))
+#    
+#                 self.bufferIndex+=1
+#                 self.bufferIndex%=3 #update ring buffer index
 
+            t3 = ticks_ms()
             if self.mode=="Synesthesia":
                 dominants_array=np.array(dominants)
                 dominants_notes=np.arange(len(dominants_array))
@@ -209,3 +252,5 @@ class Mic():
 
                 for i in range(0,len(fft_mags_array)):
                     await leds.show_hsv(i, int(current_hues[i]), 255, int(fft_mags_array[i]))
+
+            #print("synesthesia :    ", ticks_diff(t3, t2), "ms") # 2ms !

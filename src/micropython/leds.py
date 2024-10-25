@@ -4,8 +4,8 @@ from neopixel import NeoPixel
 from machine import Pin
 from time import ticks_us, ticks_diff
 
-NUM_LEDS = 12*3
-LEDS_PIN = 18
+NUM_LEDS = 13*3 #50 #ugly work around for array out of bound error caused by ring buffer in mic.py
+LEDS_PIN = 10
 
 class Leds():
     def __init__(self):
@@ -36,10 +36,13 @@ class Leds():
         t0 = ticks_us()
         rgb = await self.colorHSV(hue, sat, val)
         self.neopix[led_nr] = rgb
-        self.neopix.write()
+#         self.neopix.write()
         t1 = ticks_us()
         #print(f'show_hsv time to pixel:{ticks_diff(t1, t0):6d} µs')
-
+    
+    async def write(self):
+        self.neopix.write()
+    
     async def colorHSV(self, hue, sat, val):
         # colorHSV time:    64 µs
         """
