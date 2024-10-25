@@ -13,10 +13,10 @@ async def main():
 
     print("Starting main gather...")
     #await asyncio.gather(microphone.start(), touch0.start())#, touch1.start(), touch2.start())
-    await asyncio.create_task(microphone.start())
     await asyncio.create_task(touch0.start())
-    #await asyncio.create_task(touch1.start())
-    #await asyncio.create_task(touch2.start())
+    await asyncio.create_task(touch1.start())
+    await asyncio.create_task(touch2.start())
+    await asyncio.create_task(microphone.start())
 try:
     asyncio.run(main())
 finally:
