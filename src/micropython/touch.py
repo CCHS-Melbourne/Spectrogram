@@ -45,7 +45,7 @@ class Touch:
             self._state = False
 
     async def rawstate(self):
-        time.sleep_ms(100) # Dirty workaround: Let the sensor stabilise
+        await asyncio.sleep_ms(100) # Dirty workaround: Let the sensor stabilise
         rv = self._pad.read()  # ~220μs
         print(rv)
         if rv > self._rawval:  # Either initialisation or pad was touched
