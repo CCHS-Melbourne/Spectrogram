@@ -156,12 +156,20 @@ class Mic():
 
     async def start(self):
         leds = Leds()
+        flag = asyncio.ThreadSafeFlag()
+        flag.clear()
 
-        # Callback gets triggered when buffer is full.
-        # Needs to be defined but we don't use it ¯\_(ツ)_/¯
-        self.microphone.irq(lambda noop: noop)
+        # Define the callback for the IRQ that sets the flag
+        def irq_handler(noop):
+            flag.set()
+
+        # Attach the IRQ handler
+        self.microphone.irq(irq_handler)
 
         while True:
+            # Wait for the flag to be set by the IRQ handler
+            await flag.wait()
+
             t0 = ticks_ms()
             # Use non-blocking instead of streaming mode since we are in a loop!
             num_read = self.microphone.readinto(rawsamples) # 1ms !

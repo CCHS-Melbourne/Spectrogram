@@ -17,8 +17,6 @@ class Touch:
         self._tf = False
         self._thresh = 0  # Detection threshold
         self._rawval = 0
-        # https://github.com/micropython/micropython/issues/13178#issuecomment-2254331069
-        time.sleep_ms(500) # Dirty workaround: Let the sensor stabilise on init
         try:
             print("Initialising touch sensor")
             self._pad = TouchPad(pin)
@@ -45,9 +43,8 @@ class Touch:
             self._state = False
 
     async def rawstate(self):
-        await asyncio.sleep_ms(100) # Dirty workaround: Let the sensor stabilise
         rv = self._pad.read()  # ~220μs
-        print(rv)
+        print(id(self), rv)
         if rv > self._rawval:  # Either initialisation or pad was touched
             self._rawval = rv  # when initialised and has now been released
             self._thresh = (rv * self.thresh) >> 8
