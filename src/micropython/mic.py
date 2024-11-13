@@ -157,18 +157,19 @@ class Mic():
     async def start(self):
         leds = Leds()
         flag = asyncio.ThreadSafeFlag()
-        flag.clear()
 
         # Define the callback for the IRQ that sets the flag
         def irq_handler(noop):
+            #print("MIC IRQ!")
             flag.set()
 
         # Attach the IRQ handler
         self.microphone.irq(irq_handler)
 
+        flag.clear()
         while True:
             # Wait for the flag to be set by the IRQ handler
-            await flag.wait()
+            flag.wait()
 
             t0 = ticks_ms()
             # Use non-blocking instead of streaming mode since we are in a loop!
