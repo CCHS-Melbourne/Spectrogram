@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Waveshare_ESP32_S3_mini")(type "KiCad")(uri "${KIPRJMOD}/Waveshare_ESP32_S3_mini.pretty")(options "")(descr ""))
+)
