@@ -4,6 +4,7 @@ Also known as "EdgeLit" it's a 36 LED stack of neopixel joy with an integrated m
 
 * Audio reactive LEDs
 * Acrylic-ready, to show off your creative animations
+* Stepped structure to elimate gaps between edge-lit panels
 * Touch-enabled to switch between all its range of features
 
 ## Micropyhon
