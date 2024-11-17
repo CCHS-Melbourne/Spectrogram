@@ -82,24 +82,6 @@
 						)
 					)
 				)
-				(pin output line
-					(at 6.35 0 180)
-					(length 2.54)
-					(name "out"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
 			)
 		)
 		(symbol "LED_strip_1"
@@ -1167,24 +1149,6 @@
 						)
 					)
 				)
-				(pin output line
-					(at 6.35 0 180)
-					(length 2.54)
-					(name "out"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
 			)
 		)
 		(symbol "Waveshare_ESP32_S3_miniDev:LED_strip"
@@ -2102,16 +2066,6 @@
 	)
 	(wire
 		(pts
-			(xy 125.73 96.52) (xy 125.73 99.06)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ab0e886e-cba6-46cb-8298-ee7a4107663b")
-	)
-	(wire
-		(pts
 			(xy 205.74 78.74) (xy 208.28 78.74)
 		)
 		(stroke
@@ -2440,9 +2394,6 @@
 				(hide yes)
 			)
 		)
-		(pin "2"
-			(uuid "ac44c590-56b0-4be1-9dc6-b6b6f5823860")
-		)
 		(pin "1"
 			(uuid "75e85acd-d0fb-4a18-8671-12d83b966973")
 		)
@@ -2716,9 +2667,6 @@
 				)
 				(hide yes)
 			)
-		)
-		(pin "2"
-			(uuid "9619c25e-87f3-42ee-860a-f940c641c15c")
 		)
 		(pin "1"
 			(uuid "8ed158f2-35f4-448e-9f88-b08529c3de28")
