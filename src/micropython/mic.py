@@ -15,8 +15,25 @@ FREQUENCY_RESOLUTION=SAMPLE_RATE/SAMPLE_COUNT
 TUNING_A4_HZ=440.
 BINS_PER_OCTAVE=2
 
+# Size of the I2S DMA buffer, the smaller this is then the
+# faster each loop iteration can update the LEDs
+I2S_SAMPLE_COUNT = 512
 
-rawsamples = bytearray(SAMPLE_COUNT * SAMPLE_SIZE // 8)
+# Code below assumes the I2S buffer size is an exact multiple of the sample count
+assert(SAMPLE_COUNT % I2S_SAMPLE_COUNT == 0)
+
+# Tuning:
+#
+# - The smaller SAMPLE_COUNT is then the more quickly responsive the LEDs will
+#   be. Limit will be a minimum buffer size before the FFT results don't work
+#   (TODO: calculate this?)
+#
+# - The smaller I2S_SAMPLE_COUNT then the higher the update rate for the LEDs so
+#   they'll look less jittery. Limit will be a minimum where the CPU can't
+#   keep up (because need to perform FFT on full SAMPLE_COUNT for each iteration.)
+
+rawsamples = bytearray(I2S_SAMPLE_COUNT * SAMPLE_SIZE // 8)
+samples = np.zeros(SAMPLE_COUNT, dtype=np.int16)
 scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of the FFT
                                         # avoids memory fragmentation and thus OOM errors
 
@@ -29,7 +46,7 @@ class Mic():
     def __init__(self):
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
                                 bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
-                                ibuf=8096)
+                                ibuf=I2S_SAMPLE_COUNT * SAMPLE_SIZE // 8)
 
         self.modes=["Intensity","Synesthesia"]
 
@@ -166,21 +183,39 @@ class Mic():
         # Attach the IRQ handler
         self.microphone.irq(irq_handler)
 
-        #flag.set()
-        ## Some initial garbage should go
-        _ = self.microphone.readinto(rawsamples) # 1ms !
-        #flag.clear()
+        n_slice = 0
+
+        # Discard initial garbage, also need to do an initial read so IRQ starts triggering
+        self.microphone.readinto(rawsamples)
+
+        t_mic_sample = None
         while True:
-            # Wait for the flag to be set by the IRQ handler
-            print("BEFORE AWAIT")
+            t_awaiting = ticks_ms()
+            if t_mic_sample:
+                print("sample processing: ", ticks_diff(t_awaiting, t_mic_sample), "ms")
+
             await flag.wait()
-            print("AFTER AWAIT")
+
+            t_mic_sample = ticks_ms()
+            # this number should be non-zero, so the other coros can run. but if it's large
+            # then can probably tune the buffer sizes to get more responsiveness
+            print("time spent awaiting: ", ticks_diff(t_mic_sample, t_awaiting), "ms")
 
             t0 = ticks_ms()
-            # Use non-blocking instead of streaming mode since we are in a loop!
             num_read = self.microphone.readinto(rawsamples) # 1ms !
 
-            samples = np.frombuffer(rawsamples[:num_read], dtype=np.int16)
+            assert(num_read == I2S_SAMPLE_COUNT)  # if not true then need to be a bit more tricky about measuring slices
+
+            # Perform FFT over the entire 'samples' buffer, not just the small I2S_SAMPLE_COUNT chunk of it
+
+            # Update a slice of the 'samples' buffer
+            # TODO: This *might* work without calling np.frombuffer(), which would be faster and avoids an allocation
+            samples[n_slice * I2S_SAMPLE_COUNT:(n_slice + 1) * I2S_SAMPLE_COUNT] = np.frombuffer(rawsamples, dtype=np.int16)
+
+            n_slice += 1
+            if n_slice * I2S_SAMPLE_COUNT >= SAMPLE_COUNT:
+                n_slice = 0
+
             t1 = ticks_ms()
             #print("mic sampling:  ", ticks_diff(t1, t0) , "ms")
 
