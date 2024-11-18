@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "Waveshare_ESP32_S3_miniDev")(type "KiCad")(uri "${KIPRJMOD}/Waveshare_ESP32_S3_miniDev.kicad_sym")(options "")(descr ""))
+  (lib (name "Waveshare_ESP32_S3_miniDev2")(type "KiCad")(uri "${KIPRJMOD}/Waveshare_ESP32_S3_miniDev2.kicad_sym")(options "")(descr ""))
+)
