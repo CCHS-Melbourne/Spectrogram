@@ -160,16 +160,21 @@ class Mic():
 
         # Define the callback for the IRQ that sets the flag
         def irq_handler(noop):
-            #print("MIC IRQ!")
+            print("MIC IRQ!")
             flag.set()
 
         # Attach the IRQ handler
         self.microphone.irq(irq_handler)
 
-        flag.clear()
+        #flag.set()
+        ## Some initial garbage should go
+        _ = self.microphone.readinto(rawsamples) # 1ms !
+        #flag.clear()
         while True:
             # Wait for the flag to be set by the IRQ handler
-            flag.wait()
+            print("BEFORE AWAIT")
+            await flag.wait()
+            print("AFTER AWAIT")
 
             t0 = ticks_ms()
             # Use non-blocking instead of streaming mode since we are in a loop!
