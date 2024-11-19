@@ -31,3 +31,10 @@ $ python3 -mvenv .venv && source .venv/bin/activate && pip install -e .
 ```
 
 The resulting object you want to flash with the `esptool.py` command from the previous section is `firmware.bin`.
+
+### Running
+
+```sh
+cd src/micropython
+./run.sh
+```
