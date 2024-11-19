@@ -44,7 +44,7 @@ class Touch:
 
     async def rawstate(self):
         rv = self._pad.read()  # ~220μs
-        print(id(self), rv)
+        #print(id(self), rv)
         if rv > self._rawval:  # Either initialisation or pad was touched
             self._rawval = rv  # when initialised and has now been released
             self._thresh = (rv * self.thresh) >> 8

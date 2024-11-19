@@ -179,7 +179,6 @@ class Mic():
 
         # Define the callback for the IRQ that sets the flag
         def irq_handler(noop):
-            print("MIC IRQ!")
             flag.set()
 
         # Attach the IRQ handler
@@ -196,7 +195,7 @@ class Mic():
         while True:
             t_awaiting = ticks_ms()
             if t_mic_sample:
-                print("sample processing: ", ticks_diff(t_awaiting, t_mic_sample), "ms")
+                print("sample processing  : ", ticks_diff(t_awaiting, t_mic_sample), "ms")
 
             await flag.wait()
 
