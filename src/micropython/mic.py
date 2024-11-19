@@ -19,6 +19,8 @@ BINS_PER_OCTAVE=2
 # faster each loop iteration can update the LEDs
 I2S_SAMPLE_COUNT = 512
 
+I2S_SAMPLE_BYTES = I2S_SAMPLE_COUNT * SAMPLE_SIZE // 8
+
 # Code below assumes the I2S buffer size is an exact multiple of the sample count
 assert(SAMPLE_COUNT % I2S_SAMPLE_COUNT == 0)
 
@@ -32,8 +34,8 @@ assert(SAMPLE_COUNT % I2S_SAMPLE_COUNT == 0)
 #   they'll look less jittery. Limit will be a minimum where the CPU can't
 #   keep up (because need to perform FFT on full SAMPLE_COUNT for each iteration.)
 
-rawsamples = bytearray(I2S_SAMPLE_COUNT * SAMPLE_SIZE // 8)
 samples = np.zeros(SAMPLE_COUNT, dtype=np.int16)
+sample_bytearray = samples.tobytes()  # bytearray points to the sample samples array
 scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of the FFT
                                         # avoids memory fragmentation and thus OOM errors
 
@@ -46,7 +48,7 @@ class Mic():
     def __init__(self):
         self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
                                 bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
-                                ibuf=I2S_SAMPLE_COUNT * SAMPLE_SIZE // 8)
+                                ibuf=I2S_SAMPLE_BYTES)
 
         self.modes=["Intensity","Synesthesia"]
 
@@ -183,10 +185,12 @@ class Mic():
         # Attach the IRQ handler
         self.microphone.irq(irq_handler)
 
+
+        sample_view = memoryview(sample_bytearray)  # save an allocation by reusing this
         n_slice = 0
 
         # Discard initial garbage, also need to do an initial read so IRQ starts triggering
-        self.microphone.readinto(rawsamples)
+        self.microphone.readinto(sample_bytearray)
 
         t_mic_sample = None
         while True:
@@ -202,19 +206,24 @@ class Mic():
             print("time spent awaiting: ", ticks_diff(t_mic_sample, t_awaiting), "ms")
 
             t0 = ticks_ms()
-            num_read = self.microphone.readinto(rawsamples) # 1ms !
 
-            assert(num_read == I2S_SAMPLE_COUNT)  # if not true then need to be a bit more tricky about measuring slices
+            # Set up a slice into I2S_SAMPLE_COUNT samples of the 'samples'
+            # array, viewed as an unstructured bytearray
+            start_idx = n_slice * I2S_SAMPLE_BYTES
+            end_idx = start_idx + I2S_SAMPLE_BYTES
+            read_slice = sample_view[start_idx:end_idx]
+
+            # Read I2S samples into just this slice of bytes
+            num_read = self.microphone.readinto(read_slice) # 1ms !
+
+            assert(num_read == I2S_SAMPLE_BYTES)  # if not true then need to be a bit more tricky about measuring slices
+
+            # Increment for the next rolling chunk of samples
+            n_slice += 1
+            if n_slice * I2S_SAMPLE_COUNT == SAMPLE_COUNT:
+                n_slice = 0
 
             # Perform FFT over the entire 'samples' buffer, not just the small I2S_SAMPLE_COUNT chunk of it
-
-            # Update a slice of the 'samples' buffer
-            # TODO: This *might* work without calling np.frombuffer(), which would be faster and avoids an allocation
-            samples[n_slice * I2S_SAMPLE_COUNT:(n_slice + 1) * I2S_SAMPLE_COUNT] = np.frombuffer(rawsamples, dtype=np.int16)
-
-            n_slice += 1
-            if n_slice * I2S_SAMPLE_COUNT >= SAMPLE_COUNT:
-                n_slice = 0
 
             t1 = ticks_ms()
             #print("mic sampling:  ", ticks_diff(t1, t0) , "ms")
