@@ -10,9 +10,10 @@ async def main():
     touch1 = Touch(Pin(12))
     touch2 = Touch(Pin(13))
     microphone = Mic()
+    menu = Menu(["you", "got", "the", "hank", "of", "it"])
 
     print("Starting main gather...")
-    await asyncio.gather(touch0.start(), touch1.start(), touch2.start(), microphone.start())
+    await asyncio.gather(touch0.start(), touch1.start(), touch2.start(), microphone.start(), menu.start())
     #await asyncio.gather(microphone.start())
 try:
     asyncio.run(main())
