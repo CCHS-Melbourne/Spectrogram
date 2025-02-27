@@ -4,13 +4,23 @@ from neopixel import NeoPixel
 from machine import Pin
 from time import ticks_us, ticks_diff
 
-NUM_LEDS = 13*3 #50 #ugly work around for array out of bound error caused by ring buffer in mic.py
-LEDS_PIN = 10
+NUM_LEDS = 13 #50 #ugly work around for array out of bound error caused by ring buffer in mic.py
+DEV_STATUS_LED_PIN=21
+LEDS_PIN0 = 6
+LEDS_PIN1 = 8
+LEDS_PIN2 = 7
 
 class Leds():
     def __init__(self):
-        gpio = Pin(LEDS_PIN, Pin.OUT)
-        self.neopix = NeoPixel(gpio, NUM_LEDS)
+        gpioS = Pin(DEV_STATUS_LED_PIN, Pin.OUT)
+        gpio0 = Pin(LEDS_PIN0, Pin.OUT)
+        gpio1 = Pin(LEDS_PIN1, Pin.OUT)
+        gpio2 = Pin(LEDS_PIN2, Pin.OUT)
+        self.status_pix = NeoPixel(gpioS, 1, )
+        self.neopix0 = NeoPixel(gpio0, NUM_LEDS)
+        self.neopix1 = NeoPixel(gpio1, NUM_LEDS)
+        self.neopix2 = NeoPixel(gpio2, NUM_LEDS)
+        self.led_list=[self.neopix0,self.neopix1,self.neopix2,self.status_pix]
 
     def __iter__(self):
         pass
@@ -31,17 +41,17 @@ class Leds():
     async def dance(self):
         await self.blink()
 
-    async def show_hsv(self, led_nr, hue, sat, val):
+    async def show_hsv(self, led_arr_num, led_nr, hue, sat, val):
         #show_hsv time to pixel:  3068 µs
         t0 = ticks_us()
         rgb = await self.colorHSV(hue, sat, val)
-        self.neopix[led_nr] = rgb
+        self.led_list[led_arr_num][led_nr] = rgb
 #         self.neopix.write()
         t1 = ticks_us()
         #print(f'show_hsv time to pixel:{ticks_diff(t1, t0):6d} µs')
     
-    async def write(self):
-        self.neopix.write()
+    async def write(self, led_arr_num):
+        self.led_list[led_arr_num].write()
     
     async def colorHSV(self, hue, sat, val):
         # colorHSV time:    64 µs

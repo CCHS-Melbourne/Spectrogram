@@ -13,10 +13,19 @@ class Touch:
     debounce_ms = 50
 
     def __init__(self, pin):
-        self._state = False
-        self._tf = False
-        self._thresh = 0  # Detection threshold
-        self._rawval = 0
+        self.state = False
+        self.rv = 0
+        self._maxrawval = 0
+        
+        self.no_touch=50000
+        self.no_touch_noise=40000
+        self.hard_coded_no_touch=self.no_touch
+        self.no_touch_noises=[]
+        self.one_touch=65000
+        self.hard_coded_touch=self.one_touch
+        self.one_touch_noise=40000
+        self.no_touch_noises=[]
+        
         try:
             print("Initialising touch sensor")
             self._pad = TouchPad(pin)
@@ -26,28 +35,45 @@ class Touch:
         #asyncio.run(self.run())
 
     async def start(self):
-        self._state = await self.rawstate()  # Initial state
+        self.state = await self.rawstate()  # Initial state
 
         while True:
-            await self._check(await self.rawstate())
+            await self.rawstate()
+#             await self._check(await self.rawstate())
             # Ignore state changes until switch has settled. Also avoid hogging CPU.
             # See https://github.com/peterhinch/micropython-async/issues/69
             await asyncio.sleep_ms(self.debounce_ms)
 
-    async def _check(self, state):
-        if state == self._state:
-            return
-        #State has changed: act on it now.
-        self._state = state
-        if state:  # Button pressed: launch pressed func
-            self._state = False
+#     async def _check(self, state):
+#         if state == self.state:
+#             return
+#         #State has changed: act on it now.
+#         self.state = state
+#         if state:  # Button pressed: launch pressed func
+#             self.state = False
 
     async def rawstate(self):
-        rv = self._pad.read()  # ~220μs
-        #print(id(self), rv)
-        if rv > self._rawval:  # Either initialisation or pad was touched
-            self._rawval = rv  # when initialised and has now been released
-            self._thresh = (rv * self.thresh) >> 8
-            return False  # Untouched
-        return rv < self._thresh
+        self.rv = self._pad.read()  # ~220μs
+        
+        if (self.rv > self.hard_coded_touch):
+            self.state=True
+        if (self.rv < self.hard_coded_no_touch):
+            self.state=False
+
+        #code that intended to follow the unpressed touch value and update the threshold/noise, however, it introduced sticky buttons when buttons were half touched.
+#         if (self.rv < (self.no_touch - self.no_touch_noise)):
+#             self.no_touch=(self.no_touch*0.85 + self.rv*0.15) #refine the measurement of the average no_touch value
+#     
+#         if ((self.no_touch - self.no_touch_noise) < self.rv < (self.no_touch + self.no_touch_noise)):
+#             self.state=False
+#             self.no_touch=(self.no_touch*0.85 + self.rv*0.15) #refine the measurement of the average no_touch value
+# 
+#         if (self.rv > (self.no_touch + self.no_touch_noise)):
+#            self.state=True   
+#         
+#         if self.rv > self._maxrawval:  # Either initialisation or pad was touched
+#             self._maxrawval = (self.rv * self._maxrawval) >> 8 #this computes and sets a value that i think was intended to be a trigger, but works as a maximum detected value.     
+#         
+        return
+        
 
