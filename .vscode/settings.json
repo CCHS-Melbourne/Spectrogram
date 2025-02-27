@@ -1,8 +1,0 @@
-{
-    "rust-analyzer.checkOnSave.allTargets": false,
-    "rust-analyzer.linkedProjects": [
-        "src/rust/Cargo.toml",
-        "src/sync_rust_esp32c3/Cargo.toml"
-    ],
-    "idf.port": "/dev/ttyACM0"
-}
