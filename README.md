@@ -1,4 +1,4 @@
-# The Thing
+# Modern Equalizer
 
 ![the_thing](./images/the_thing.jpg)
 
