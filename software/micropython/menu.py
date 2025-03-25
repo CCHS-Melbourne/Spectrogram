@@ -129,20 +129,41 @@ class Menu:
             return
         
         #Need to make these one general call.
-        if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="decibel_ceiling":
+        elif self.sub_modes[self.main_mode_index][self.sub_mode_index]=="decibel_ceiling":
             #3print("tried to change decibel ceiling")
             
-            if direction=="u":
-                #3print("Decibel ceiling: ", self.mic.highest_db)
+            if direction=="+":
                 #tell the menu that an update is required, needed or it will draw every frame.
                 self.mic.menu_update_required=True
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
-                #calculate the colours for the given mode, based on some music logic and desired settings
-                for index,pix in enumerate(self.menu_pix):
-                    self.menu_pix[index]=[24*2*255,255,20]#hue=(yellow in 255 scale)*255(becuase the hue is from 0-65536), saturation full, brightness low
-                #pass the mic the image of the menu for the given mode
-                self.mic.menu_pix=self.menu_pix
+                
+                if self.mic.max_db_set_point<=-20:
+                    self.mic.max_db_set_point+=10
+                    print("increased max db range to: ", self.mic.max_db_set_point)
+                elif self.mic.max_db_set_point>=-20:
+                    print("can't increase maxDB, if this is a concern to your visualization quest, you need to get hearing protection")
+                    
+            if direction=="-":
+                #tell the menu that an update is required, needed or it will draw every frame.
+                self.mic.menu_update_required=True
+                #set the menu update required by the mic LED updater
+                self.mic.menu_thing_updating="highest_db"
+                
+                if self.mic.max_db_set_point>self.mic.lowest_db+20:
+                    self.mic.max_db_set_point-=10
+                    print("decreased max db range to: ", self.mic.max_db_set_point)
+                elif self.mic.max_db_set_point<=self.mic.lowest_db+20:
+                    print("can't decrease below/near to the lowest db, won't decrease range further, you'll lose all resolution")
+            
+            
+            elif direction=="u":
+                #tell the menu that an update is required, needed or it will draw every frame.
+                self.mic.menu_update_required=True
+                #set the menu update required by the mic LED updater
+                self.mic.menu_thing_updating="highest_db"
+                
+                
             return
         
         if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="hue_select":

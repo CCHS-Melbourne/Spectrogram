@@ -328,8 +328,9 @@ class Mic():
 #                 print("loud: raising db top. db: ", self.highest_db)
                 time_of_ceiling_raise=ticks_ms()
             
-            decay_delay=ticks_diff(ticks_ms(),time_of_ceiling_raise)
-            if max(db_scaling)<=self.highest_db and decay_delay>1000: #hardcoded delay on the AGC
+#             decay_delay=ticks_diff(ticks_ms(),time_of_ceiling_raise)
+#             if max(db_scaling)<=self.highest_db and decay_delay>1000: #hardcoded delay on the AGC
+            if max(db_scaling)<=self.highest_db:
                 self.highest_db=0.8*self.highest_db+0.2*self.max_db_set_point
 #                 print("quiet: lowering db top to set point. db: ", self.highest_db)
             
@@ -545,6 +546,7 @@ class Mic():
                         if (self.highest_db>self.max_db_set_point) and (i*db_per_bin <= self.highest_db < (i+1)*db_per_bin):
                             await leds.show_hsv(2,i-1,10000,255,int(self.brightness)) #AAA make just green as part of Hue fix
                     
+                    #This determines if the menue keep updating or is a one and done?
 #                     self.menu_update_required=False
                     
                 if self.menu_thing_updating=="hue_select" and self.menu_update_required==True:
