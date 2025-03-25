@@ -11,7 +11,7 @@ class Menu:
         self.sub_modes=[['brightness','LEDs_per_px','start_note','decibel_ceiling','hue_select'],['brightness','LEDs_per_px','start_note','decibel_ceiling','hue_select']]
         self.sub_mode_index=0
         self.sub_sub_modes=[['max_db_set','min_db_set'],['max_db_set','min_db_set']]
-        self.sub_mode_index=0
+        self.sub_sub_mode_index=0
         
         self.mic=mic
         self.touches = []
@@ -138,23 +138,44 @@ class Menu:
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
                 
-                if self.mic.max_db_set_point<=-20:
-                    self.mic.max_db_set_point+=10
-                    print("increased max db range to: ", self.mic.max_db_set_point)
-                elif self.mic.max_db_set_point>=-20:
-                    print("can't increase maxDB, if this is a concern to your visualization quest, you need to get hearing protection")
-                    
+                if self.mic.db_selection=='max_db_set':
+                    #control the movement of the pixel indicating the top of the colourmapping range
+                    if self.mic.max_db_set_point<=-20:
+                        self.mic.max_db_set_point+=10
+                        print("increased max db range to: ", self.mic.max_db_set_point)
+                    elif self.mic.max_db_set_point>-20:
+                        print("can't increase maxDB, if this is a concern to your visualization quest, you need to get hearing protection")
+                else:
+                    #control the position of the pixel indicating the bottom of the colourmapping range
+                    if self.mic.lowest_db<=self.mic.max_db_set_point-20:
+                        self.mic.lowest_db+=10
+                        print("increased min db range to: ", self.mic.max_db_set_point)
+                    #make sure the min db value cant get too near to the max db value
+                    elif self.mic.lowest_db>self.mic.max_db_set_point-20:
+                        print("can't increase/raise to the lowest db, you'll lose all resolution")
+                
+                
             if direction=="-":
                 #tell the menu that an update is required, needed or it will draw every frame.
                 self.mic.menu_update_required=True
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
                 
-                if self.mic.max_db_set_point>self.mic.lowest_db+20:
-                    self.mic.max_db_set_point-=10
-                    print("decreased max db range to: ", self.mic.max_db_set_point)
-                elif self.mic.max_db_set_point<=self.mic.lowest_db+20:
-                    print("can't decrease below/near to the lowest db, won't decrease range further, you'll lose all resolution")
+                if self.mic.db_selection=='max_db_set':
+                    #control the movement of the pixel indicating the top of the colourmapping range
+                    if self.mic.max_db_set_point>=self.mic.lowest_db+20:
+                        self.mic.max_db_set_point-=10
+                        print("decreased max db range to: ", self.mic.max_db_set_point)
+                    elif self.mic.max_db_set_point<self.mic.lowest_db+20:
+                        print("can't decrease below/near to the lowest db, won't decrease range further, you'll lose all resolution")
+                else:
+                    #control the position of the pixel indicating the bottom of the colourmapping range
+                    if self.mic.lowest_db>=-110:
+                        self.mic.lowest_db-=10
+                        print("increased min db range to: ", self.mic.max_db_set_point)
+                    #make sure the min db value cant get too near to the max db value
+                    elif self.mic.lowest_db<-110:
+                        print("can't lower any further, you'll lose sight of the pixel. If you can hear down here, you must get overstimulated very easily.")                    
             
             
             elif direction=="u":
@@ -162,12 +183,10 @@ class Menu:
                 self.mic.menu_update_required=True
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
-                
-                
+            
             return
         
         if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="hue_select":
-           
             if direction=="u":
                 #3print("Hue select: ")
                 #tell the menu that an update is required, needed or it will draw every frame.
@@ -190,9 +209,14 @@ class Menu:
             self.sub_mode_index%=len(self.sub_modes[self.main_mode_index])
         
         self.sub_mode=self.sub_modes[self.main_mode_index][self.sub_mode_index]
-        #3print("Current sub-mode: ",self.sub_mode)
+        print("Current sub-mode: ",self.sub_mode)
         
-    
+    def change_sub_submode(self):        
+        self.sub_sub_mode_index+=1
+        self.sub_sub_mode_index%=len(self.sub_sub_modes)
+        self.sub_sub_mode=self.sub_sub_modes[self.main_mode_index][self.sub_sub_mode_index]
+        print("Current sub-sub-mode: ",self.sub_sub_mode)
+
     async def update_menu(self):
             #check each button combination and perform an action accordingly
             if (self.states==[True,True,True] and self.state_changed!=True):
@@ -229,8 +253,12 @@ class Menu:
                 await self.update_value("u")
             
             #Thought about adding more user control to the decibel levels, decided against, one level of menues too far. Just need a better AGC.
-#             if (self.states==[False,True,False] and self.state_changed!=True):
-#                 self.change_sub_submode()
+            if (self.states==[False,False,True] and self.state_changed!=True):
+                #only change if in the decible select window.
+                if self.sub_mode=="decibel_ceiling":
+                    self.change_sub_submode()
+                    self.mic.db_selection=self.sub_sub_mode
+                    
             
             #toggle the menu on and off
             if (self.states==[True,True,False] and self.state_changed!=True):

@@ -64,7 +64,8 @@ class Mic():
         
         self.max_db_set_point=-40
         self.highest_db=self.max_db_set_point
-        self.lowest_db=-80    
+        self.lowest_db=-80
+        self.db_selection="max_db_set"
         
         # Event required to change this mode
 #         self.change_display_mode(0)
@@ -537,10 +538,16 @@ class Mic():
                     
                         #draw lowest db setting
                         if i*db_per_bin==self.lowest_db:
-                            await leds.show_hsv(2,i-1,0,255,int(self.brightness))  
+                            if self.db_selection=='min_db_set':
+                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness))
+                            else:
+                                await leds.show_hsv(2,i-1,0,255,int(self.brightness))
                         #draw highest db setting
                         if i*db_per_bin==self.max_db_set_point:
-                            await leds.show_hsv(2,i-1,0,255,int(self.brightness))
+                            if self.db_selection=='max_db_set':
+                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness))
+                            else:
+                                await leds.show_hsv(2,i-1,0,255,int(self.brightness))
                         #draw db cieling
                         
                         if (self.highest_db>self.max_db_set_point) and (i*db_per_bin <= self.highest_db < (i+1)*db_per_bin):
