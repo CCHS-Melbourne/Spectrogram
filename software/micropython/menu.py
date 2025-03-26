@@ -149,7 +149,7 @@ class Menu:
                     #control the position of the pixel indicating the bottom of the colourmapping range
                     if self.mic.lowest_db<=self.mic.max_db_set_point-20:
                         self.mic.lowest_db+=10
-                        print("increased min db range to: ", self.mic.max_db_set_point)
+                        print("increased min db range to: ", self.mic.lowest_db)
                     #make sure the min db value cant get too near to the max db value
                     elif self.mic.lowest_db>self.mic.max_db_set_point-20:
                         print("can't increase/raise to the lowest db, you'll lose all resolution")
@@ -172,7 +172,7 @@ class Menu:
                     #control the position of the pixel indicating the bottom of the colourmapping range
                     if self.mic.lowest_db>=-110:
                         self.mic.lowest_db-=10
-                        print("increased min db range to: ", self.mic.max_db_set_point)
+                        print("decreased min db range to: ", self.mic.lowest_db)
                     #make sure the min db value cant get too near to the max db value
                     elif self.mic.lowest_db<-110:
                         print("can't lower any further, you'll lose sight of the pixel. If you can hear down here, you must get overstimulated very easily.")                    
@@ -278,38 +278,11 @@ class Menu:
     async def start(self):
         while True:
             for index,touch in enumerate(self.touches):                    
-                
                 self.states[index]=touch.state
                 self.rvs[index]=touch.rv
-                print("rv0", self.rvs[0], "rv1", self.rvs[1], "rv2", self.rvs[2])
+#                 print("rv0", self.rvs[0], "rv1", self.rvs[1], "rv2", self.rvs[2])
                 
-#                 self.states[index]=touch.state
-#                 self.rvs[index]=touch.rv
-#                 self.states[index]=touch.state
-#                 self.no_touch[index]=touch.no_touch
-#                 self.no_touch_noise[index]=touch.no_touch_noise
-#                 self.one_touch[index]=touch.one_touch
-#                 self.one_touch_noise[index]=touch.one_touch_noise
-#                 
-                #I'm performing this operation here because each touch does not have information about the others,
-                #also, I'm doing this to be stubborn and figure out how to get the touches calibrating,
-                #presently, the touches are set in the touch.py if the rv is greater than the no_touch value + noise
-                #Check if the rv corresponds to just one touch (no others activated) and then raise value with filter (what about lowering it, Hank?)
-#                 if ((touch.rv > (touch.one_touch + touch.one_touch_noise)) and (self.states[index-1]==False) and (self.states[index-2]==False)):
-#                     touch.one_touch=(touch.one_touch*0.65 + touch.rv*0.35) #refine the measurement of the average no_touch value
-#                     self.one_touch[index]=touch.one_touch
-                
-
-            
-#             print("rv0", self.rvs[0], "rv1", self.rvs[1], "rv2", self.rvs[2], "no_touch0", self.no_touch[0],"no_touch1", self.no_touch[1],"no_touch1", self.no_touch[2])
-#             print("rv", self.rvs[1],
-#                   "no_touch", self.no_touch[1],"no_touch_noise", self.no_touch[1]+(self.no_touch_noise[1]*self.windowflip),
-#                   "one_touch", self.one_touch[1],"one_touch_noise", self.one_touch[1]+(self.one_touch_noise[1]*self.windowflip))
-#             self.windowflip*=-1
-
-
-
-#             print(self.states)
+            print(self.states)
             await self.update_menu()
             #make the menu pause between updates
             await asyncio.sleep_ms(500)

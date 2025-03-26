@@ -63,7 +63,7 @@ class Mic():
         
         
         self.max_db_set_point=-40
-        self.highest_db=self.max_db_set_point
+        self.highest_db_on_record=self.max_db_set_point
         self.lowest_db=-80
         self.db_selection="max_db_set"
         
@@ -322,20 +322,30 @@ class Mic():
             
             #auto gain control, in theory
             loudest_reading=max(db_scaling)
-            if loudest_reading>self.highest_db:
-#                 self.highest_db=0.8*self.highest_db+0.2*max(db_scaling)
-                self.highest_db=loudest_reading
-                print("highest db: ",self.highest_db)
-#                 print("loud: raising db top. db: ", self.highest_db)
+            if loudest_reading>self.highest_db_on_record:
+#                 self.highest_db_on_record=0.8*self.highest_db_on_record+0.2*max(db_scaling)
+                self.highest_db_on_record=loudest_reading
+                print("highest db recorded: ",self.highest_db_on_record)
+#                 print("loud: raising db top. db: ", self.highest_db_on_record)
                 time_of_ceiling_raise=ticks_ms()
+                spam_reduction_time=ticks_ms()
+            elif (loudest_reading<self.highest_db_on_record) and (self.highest_db_on_record>self.max_db_set_point+1): #+1db is cheating the decay on the highest db value.
+                time_since_raise=ticks_diff(ticks_ms(),time_of_ceiling_raise)
+                if time_since_raise<3000:
+                    time_since_last_update=ticks_diff(ticks_ms(),spam_reduction_time)
+                    if time_since_last_update>500:#reduce the number of spam checks
+                        spam_reduction_time=ticks_ms()
+                        print("checking if enough time has passed to lower the AGC")
+                elif ticks_diff(ticks_ms(),time_of_ceiling_raise)>3000: #hardcoded delay on the AGC
+                    self.highest_db_on_record=0.9*self.highest_db_on_record+0.1*self.max_db_set_point
+                    time_since_last_update=ticks_diff(ticks_ms(),spam_reduction_time)
+                    if time_since_last_update>500:#reduce the number of spam checks
+                        spam_reduction_time=ticks_ms()
+                        print("quiet: lowering db top to set point. db: ", self.highest_db_on_record)
             
-#             decay_delay=ticks_diff(ticks_ms(),time_of_ceiling_raise)
-#             if max(db_scaling)<=self.highest_db and decay_delay>1000: #hardcoded delay on the AGC
-            if max(db_scaling)<=self.highest_db:
-                self.highest_db=0.8*self.highest_db+0.2*self.max_db_set_point
-#                 print("quiet: lowering db top to set point. db: ", self.highest_db)
+#                 
             
-            summed_magnitude_range=np.array([self.lowest_db, self.highest_db]) #values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
+            summed_magnitude_range=np.array([self.lowest_db, self.highest_db_on_record]) #values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
             
             #scale to 0-255 range, can/should scale up for more hue resolution
             fft_mags_array = np.interp(db_scaling, summed_magnitude_range, brightness_range)
@@ -526,7 +536,7 @@ class Mic():
                     
                     #print("loudest reading: ", loudest_reading)
                     db_per_bin=-10 #-120 to 0 decibels makes a nice 10 decible scale bar
-                    #for loop looks odd, because again it's decibels.
+                    #for loop looks odd, because again it's decibels, and because I flipped it to be left to right
                     for i in range(12,0,-1):
                         #conditions will look odd here because the values to work with are in decibels, which are -ve
                         if i*db_per_bin <= loudest_reading:
@@ -536,6 +546,13 @@ class Mic():
                             #blank out leds
                             await leds.show_hsv(2,i-1,0,0,0)  
                     
+                        #draw level top first, so that it does not overide the highest db pixel indicator, in the case the highest value is greater than the high db but less than the next pixel
+                        if (self.highest_db_on_record>self.max_db_set_point):
+#                             if (i*db_per_bin <= loudest_reading < (i-1)*db_per_bin):
+#                                 await leds.show_hsv(2,i-1,5000,255,int(self.brightness))
+                            if (i*db_per_bin <= self.highest_db_on_record < (i-1)*db_per_bin):
+                                await leds.show_hsv(2,i-1,5000,255,int(self.brightness))
+                        
                         #draw lowest db setting
                         if i*db_per_bin==self.lowest_db:
                             if self.db_selection=='min_db_set':
@@ -548,10 +565,9 @@ class Mic():
                                 await leds.show_hsv(2,i-1,20000,255,int(self.brightness))
                             else:
                                 await leds.show_hsv(2,i-1,0,255,int(self.brightness))
-                        #draw db cieling
+                    #draw update the menu?
+#                     await leds.write(2)
                         
-                        if (self.highest_db>self.max_db_set_point) and (i*db_per_bin <= self.highest_db < (i+1)*db_per_bin):
-                            await leds.show_hsv(2,i-1,10000,255,int(self.brightness)) #AAA make just green as part of Hue fix
                     
                     #This determines if the menue keep updating or is a one and done?
 #                     self.menu_update_required=False
