@@ -280,7 +280,7 @@ class Mic():
             t_mic_sample = ticks_ms()
             # this number should be non-zero, so the other coros can run. but if it's large
             # then can probably tune the buffer sizes to get more responsiveness
-#             #print("time spent awaiting: ", ticks_diff(t_mic_sample, t_awaiting), "ms")
+#             print("time spent awaiting: ", ticks_diff(t_mic_sample, t_awaiting)) #0-17ms
             t0 = ticks_ms()
 
             # Set up a slice into I2S_SAMPLE_COUNT samples of the 'samples'
@@ -298,17 +298,14 @@ class Mic():
             n_slice += 1
             if n_slice * I2S_SAMPLE_COUNT == SAMPLE_COUNT:
                 n_slice = 0
+              
+                
 
             # Perform FFT over the entire 'samples' buffer, not just the small I2S_SAMPLE_COUNT chunk of it
-#             t1 = ticks_ms()
             # calculate fft_mag from samples
+            tfft1=ticks_ms()
             fft_mags,dominants = await self.mini_wled(samples)
-            t2 = ticks_ms()
             ##print("wled function:", ticks_diff(t2, t1), "ms") # 40ms
-            
-
-            
-            
 
             # Assuming fft_mags is a numpy array
             fft_mags_array_raw = np.array(fft_mags)
@@ -320,7 +317,7 @@ class Mic():
             # We need to make noise an ambient low level of intensity
             brightness_range=np.array([0,255]) 
             
-            #auto gain control, in theory
+            #auto gain control
             loudest_reading=max(db_scaling)
             if loudest_reading>self.highest_db_on_record:
 #                 self.highest_db_on_record=0.8*self.highest_db_on_record+0.2*max(db_scaling)
@@ -335,24 +332,27 @@ class Mic():
                     time_since_last_update=ticks_diff(ticks_ms(),spam_reduction_time)
                     if time_since_last_update>500:#reduce the number of spam checks
                         spam_reduction_time=ticks_ms()
-                        print("checking if enough time has passed to lower the AGC")
+#                         print("checking if enough time has passed to lower the AGC")
                 elif ticks_diff(ticks_ms(),time_of_ceiling_raise)>3000: #hardcoded delay on the AGC
                     self.highest_db_on_record=0.9*self.highest_db_on_record+0.1*self.max_db_set_point
                     time_since_last_update=ticks_diff(ticks_ms(),spam_reduction_time)
                     if time_since_last_update>500:#reduce the number of spam checks
                         spam_reduction_time=ticks_ms()
-                        print("quiet: lowering db top to set point. db: ", self.highest_db_on_record)
+#                         print("quiet: lowering db top to set point. db: ", self.highest_db_on_record)
             
-#                 
+                 
             
             summed_magnitude_range=np.array([self.lowest_db, self.highest_db_on_record]) #values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
             
             #scale to 0-255 range, can/should scale up for more hue resolution
             fft_mags_array = np.interp(db_scaling, summed_magnitude_range, brightness_range)
 #             print("FFT_mags_array: ", fft_mags_array)
-            #(fft_mags_array)
+            tfft2=ticks_ms()
+#             print("FFT: ", ticks_diff(tfft2, tfft1)) #42-77
+            
             
             # Apply cosmetics to values calculated above
+            tint1=ticks_ms()
             if self.mode=="Intensity":
                 # Create masks for different hue ranges
                 mask_blue_red = np.where(fft_mags_array <= 170,1,0)
@@ -361,6 +361,7 @@ class Mic():
                 # Define ranges and target mappings
                 original_range_blue_red = np.array([0, 170])
                 target_range_blue_red = np.array([32768, 65535])
+                
                 original_range_red_yellow = np.array([171, 255])
                 target_range_red_yellow = np.array([0, 16320])
 
@@ -393,8 +394,11 @@ class Mic():
                 await leds.write(0) 
                 await leds.write(1)
                 await leds.write(2)
-                    
-            t3 = ticks_ms()
+            tint2=ticks_ms()
+#             print("Intensity: ", ticks_diff(tint2, tint1)) #9-10
+            
+            
+            tsyn1 = ticks_ms()
             if self.mode=="Synesthesia":
                 # scale brightness of magnitudes following their hue calculation
                 #this line is repeated above inside the intesities mode, but there it has to be after some hue calculatations
@@ -429,9 +433,11 @@ class Mic():
                 await leds.write(0)
                 await leds.write(1)
                 await leds.write(2)
-            ##print("synesthesia :    ", ticks_diff(t3, t2), "ms") # 2ms !
+            tsyn2=ticks_ms()
+#             print("synesthesia: ", ticks_diff(tsyn2, tsyn1)) #11-13
             
             
+            tmenu1=ticks_ms()
             if self.menu_init==True: #annoying to have a single use line but this is a quick fix.                                
                 #init the status pix or it will keep the last menu state
                 leds.status_pix[0]=(0,20,0)#the status LED is grb
@@ -541,7 +547,7 @@ class Mic():
                         #conditions will look odd here because the values to work with are in decibels, which are -ve
                         if i*db_per_bin <= loudest_reading:
                             #draw loudest measured decibel signal, from -120 to 0
-                            await leds.show_hsv(2,i-1,self.octave_shift_hue,255,int(self.brightness))#annoying indicies, minus one is to line up with pixels  
+                            await leds.show_hsv(2,i-1,self.octave_shift_hue,255,int(self.brightness*0.5))#annoying indicies, minus one is to line up with pixels  
                         else:    
                             #blank out leds
                             await leds.show_hsv(2,i-1,0,0,0)  
@@ -551,20 +557,20 @@ class Mic():
 #                             if (i*db_per_bin <= loudest_reading < (i-1)*db_per_bin):
 #                                 await leds.show_hsv(2,i-1,5000,255,int(self.brightness))
                             if (i*db_per_bin <= self.highest_db_on_record < (i-1)*db_per_bin):
-                                await leds.show_hsv(2,i-1,5000,255,int(self.brightness))
+                                await leds.show_hsv(2,i-1,5000,255,int(self.brightness*0.5))
                         
                         #draw lowest db setting
                         if i*db_per_bin==self.lowest_db:
                             if self.db_selection=='min_db_set':
-                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness))
+                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness*0.5))#green is bright as
                             else:
-                                await leds.show_hsv(2,i-1,0,255,int(self.brightness))
+                                await leds.show_hsv(2,i-1,0,255,int(self.brightness*0.5))
                         #draw highest db setting
                         if i*db_per_bin==self.max_db_set_point:
                             if self.db_selection=='max_db_set':
-                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness))
+                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness*0.5))#green is  bright as
                             else:
-                                await leds.show_hsv(2,i-1,0,255,int(self.brightness))
+                                await leds.show_hsv(2,i-1,0,255,int(self.brightness*0.5))
                     #draw update the menu?
 #                     await leds.write(2)
                         
@@ -580,11 +586,23 @@ class Mic():
                     for i in range(0,12):
                         await leds.show_hsv(2,i,0,0,0)
                         
-                    
-#                 if self.menu_thing_updating=="ect" and self.menu_update_required==True:
-#                     #update onboard LED/mini-menu
-#                     leds.status_pix[0]=(0,0,20)#the status LED is grb
-#                     await leds.write(3)
-#                 
-
+            tmenu2=ticks_ms()
+#             print("menuing: ", ticks_diff(tmenu2, tmenu1)) #0
+                        
+            
+            
+#             print("time spent awaiting: ", ticks_diff(t_mic_sample, t_awaiting), "FFT: ", ticks_diff(tfft2, tfft1),"Intensity: ", ticks_diff(tint2, tint1), "synesthesia: ", ticks_diff(tsyn2, tsyn1),"menuing: ", ticks_diff(tmenu2, tmenu1), "total", ticks_diff(tmenu2,t_awaiting))
+            total_ms=ticks_diff(tmenu2,t_awaiting)
+            print("total (ms)", total_ms, "fps:", 1000/total_ms)
+            
+            #Smooth to a consistent fps, which looks nicer, imo.
+            fps=15
+            frame_time=1000//fps
+            if total_ms < frame_time:
+                wait_time=frame_time-total_ms
+            else:
+                wait_time=0
+            await asyncio.sleep_ms(wait_time) #yeild control. #this one line appears to have made the program substantially more responsive in the menu side of things.
+            
+            
         
