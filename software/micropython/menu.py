@@ -43,7 +43,6 @@ class Menu:
     async def update_main_mode(self):
         self.main_mode_index+=1
         self.main_mode_index%=len(self.main_modes)
-        self.sub_mode_index=0
                         
     async def update_value(self, direction):
         if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="brightness":
