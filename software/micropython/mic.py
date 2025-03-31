@@ -54,7 +54,8 @@ class Mic():
                                 ibuf=I2S_SAMPLE_BYTES)
 
         self.modes=["Intensity","Synesthesia"]
-        self.menu_pix=[[],[],[],[],[],[],[],[],[],[],[],[]]#12 values to fill.
+        self.mode=self.modes[0]
+#         self.menu_pix=[[],[],[],[],[],[],[],[],[],[],[],[]]#12 values to fill.
         
         self.show_menu_in_mic=False
         self.menu_thing_updating="brightness"
@@ -67,15 +68,11 @@ class Mic():
         self.lowest_db=-80
         self.db_selection="max_db_set"
         
-        # Event required to change this mode
-#         self.change_display_mode(0)
-        self.mode=self.modes[0]
-        
-        # Event required to change this value
         self.noise_floor=1000
         
-        # Event required to change this value
-        self.brightness=20 #[0-255]
+        self.brightnesses=[2,3,4,5,7,10,20,35,50,90,160,255]
+        self.brightness_index=4
+        self.brightness=self.brightnesses[self.brightness_index] #[0-255]
         
         # Calculate the defined frequencies of the musical notes
 #         self.notes=np.arange(1.,85.)
@@ -87,13 +84,14 @@ class Mic():
         self.notes_per_led_index=4
         self.notes_per_led_options=[1,2,3,4,6,12]
         self.notes_per_led=self.notes_per_led_options[self.notes_per_led_index]
+        
         self.start_range_index=0 #this is a variable that determines where in a precomputed list of ranges of indexes to start displaying the fft results 
         self.full_window_len=12
         self.window_slice_len=12 #this is for clamping the start note when the octave resolution/notes_per_LED is switched 
         self.max_window_overreach=5 #this limit is determined by how many octaves can be shown at once, which is determined by the fft sampling parameters. Currently 7 octaves. 12Leds-7octaves=5 to pad in worst case
         
         self.notes_per_pix_hue=0
-        self.octave_shift_hue=50000
+        self.octave_shift_hue=42000 #blue, determined by looking at hue learner.
         
         #load the precomupted octave menu and select the dictionary entry that corresponds to the current notes_per_led option
         #create two buffers to avoid async clashes
@@ -131,8 +129,8 @@ class Mic():
 
         # Set the colours of notes in synaesthesia mode
         hue_max=65535 #2^16, according to docs in leds.py
-        hue_diff=5000
-        base_hue=40000
+        base_hue=0 #start with red #started learning with/listening to Kate Bush with: 40000
+        hue_diff=5400 #=65535/12=5400, to maximise the step sizes, with some tuning to get good deep blues, ect. #started learning with/listening to Kate Bush with: 5000
         self.note_hues=np.arange(12.)
         for i in np.arange(len(self.note_hues)):
             self.note_hues[i]=(base_hue+(i*hue_diff))%65535
@@ -459,8 +457,8 @@ class Mic():
                     parts_per_bin=21 #255/12
                     #skip the first pixel, it's already been set.
                     for i in range(1,12):
-                        #if the pixel is in range of the brightness value, light it up
-                        if  i*parts_per_bin <= self.brightness < (i+1)*parts_per_bin:
+                        #if the pixel is at the brightness index
+                        if i==self.brightness_index:
                             await leds.show_hsv(2,11-i,0,255,int(self.brightness))    
                         # otherwise, blank out the non needed menu pixels
                         else:
@@ -494,7 +492,7 @@ class Mic():
                     
                 if self.menu_thing_updating=="start_range_index" and self.menu_update_required==True:
                     #update onboard LED/mini-menu
-                    leds.status_pix[0]=(0,20,10)#the status LED is grb
+                    leds.status_pix[0]=(0,0,20)#the status LED is grb, blue is distinct, the purple turns to red through the flex.
                     await leds.write(3)
                     
 #                     if self.start_range_index>=self.window_slice_len+self.max_window_overreach:
@@ -507,11 +505,9 @@ class Mic():
                     
                     #3print("start_range_index_in_mic: ",self.start_range_index)
                     for i in range(0,12): #blank out LEDs
-                        await leds.show_hsv(2,i,0,0,0)
-                        if self.menu_to_operate_with[i]==-1:
-                            await leds.show_hsv(2,i,self.octave_shift_hue,255,int(self.brightness*0.1))
-                        elif self.menu_to_operate_with[i]>=0:
-                            await leds.show_hsv(2,i,self.menu_to_operate_with[i],255,self.brightness)
+                        await leds.show_hsv(2,i,0,0,0)                    
+                        if self.menu_to_operate_with[i]>=0:
+                            await leds.show_hsv(2,i,self.menu_to_operate_with[i]+self.octave_shift_hue,255,self.brightness)
                     
                     
 #                     for i in range(0,self.window_slice_len,int(12/self.notes_per_led)): #the division of 12 is required to scale the right way around, six notes per led should show an octave every two leds, not every six
@@ -593,7 +589,7 @@ class Mic():
             
 #             print("time spent awaiting: ", ticks_diff(t_mic_sample, t_awaiting), "FFT: ", ticks_diff(tfft2, tfft1),"Intensity: ", ticks_diff(tint2, tint1), "synesthesia: ", ticks_diff(tsyn2, tsyn1),"menuing: ", ticks_diff(tmenu2, tmenu1), "total", ticks_diff(tmenu2,t_awaiting))
             total_ms=ticks_diff(tmenu2,t_awaiting)
-            print("total (ms)", total_ms, "fps:", 1000/total_ms)
+            
             
             #Smooth to a consistent fps, which looks nicer, imo.
             fps=15
@@ -603,6 +599,6 @@ class Mic():
             else:
                 wait_time=0
             await asyncio.sleep_ms(wait_time) #yeild control. #this one line appears to have made the program substantially more responsive in the menu side of things.
-            
+#             print("total (ms)", total_ms, "fps:", 1000/total_ms, "delay:", wait_time)
             
         

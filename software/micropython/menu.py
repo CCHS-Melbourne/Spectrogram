@@ -8,7 +8,7 @@ class Menu:
         
         self.main_modes=["Intensity","Synesthesia"]
         self.main_mode_index=0
-        self.sub_modes=[['brightness','LEDs_per_px','start_note','decibel_ceiling','hue_select'],['brightness','LEDs_per_px','start_note','decibel_ceiling','hue_select']]
+        self.sub_modes=[['brightness','LEDs_per_px','start_note','decibel_ceiling'],['brightness','LEDs_per_px','start_note','decibel_ceiling']] #On the wishlist but not critical path: 'hue_select'
         self.sub_mode_index=0
         self.sub_sub_modes=[['max_db_set','min_db_set'],['max_db_set','min_db_set']]
         self.sub_sub_mode_index=0
@@ -24,6 +24,7 @@ class Menu:
         
         self.first_press=True
         self.start_time=ticks_ms()
+        self.menu_on_time=0
         
         
         #self.windowflip=1 #reduce number of lines by plotting a sawtooth for the thresholds
@@ -46,27 +47,28 @@ class Menu:
                         
     async def update_value(self, direction):
         if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="brightness":
-            current_time=ticks_ms()
-            button_held=ticks_diff(current_time,self.start_time,)
-            print('button held (ms): ',button_held)
-            if button_held <= 1000:
-                brightness_step=1
-            elif 1000 < button_held <= 2000:
-                brightness_step=10
-            elif 2000 < button_held:
-                brightness_step=20
-            print('Brightness step: ',brightness_step)
+#             current_time=ticks_ms()
+#             button_held=ticks_diff(current_time,self.start_time,)
+#             print('button held (ms): ',button_held)
+#             if button_held <= 1000:
+#                 brightness_step=1
+#             elif 1000 < button_held <= 2000:
+#                 brightness_step=10
+#             elif 2000 < button_held:
+#                 brightness_step=20
+#             print('Brightness step: ',brightness_step)
             
             if direction=="+":
-                self.mic.brightness+=brightness_step
+                if self.mic.brightness_index<len(self.mic.brightnesses)-1:
+                    self.mic.brightness_index+=1
+                self.mic.brightness=self.mic.brightnesses[self.mic.brightness_index]
                 self.mic.menu_update_required=True
-                if self.mic.brightness>255:
-                    self.mic.brightness=255
+
             if direction=="-":
-                self.mic.brightness-=brightness_step
+                if self.mic.brightness_index>=1:
+                    self.mic.brightness_index-=1
+                self.mic.brightness=self.mic.brightnesses[self.mic.brightness_index]
                 self.mic.menu_update_required=True
-                if self.mic.brightness<0:
-                    self.mic.brightness=0
             
             if direction=="u":
                 self.mic.show_menu_in_mic=True
@@ -182,21 +184,7 @@ class Menu:
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
             
-            return
-        
-        if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="hue_select":
-            if direction=="u":
-                print("Hue select: ")
-                #tell the menu that an update is required, needed or it will draw every frame.
-                self.mic.menu_update_required=True
-                #set the menu update required by the mic LED updater
-                self.mic.menu_thing_updating="hue_select"
-                #calculate the colours for the given mode, based on some music logic and desired settings
-                for index,pix in enumerate(self.menu_pix):
-                    self.menu_pix[index]=[24*3*255,255,20]#hue=(yellow in 255 scale)*255(becuase the hue is from 0-65536), saturation full, brightness low
-                #pass the mic the image of the menu for the given mode
-                self.mic.menu_pix=self.menu_pix
-            return
+            return	
             
     async def change_submode(self,direction):
         if direction=="+":
@@ -218,6 +206,7 @@ class Menu:
     async def update_menu(self):
             #check each button combination and perform an action accordingly
             if (self.states==[True,True,True] and self.state_changed!=True):
+                self.menu_on_time=ticks_ms()
                 print("Changing main mode")
                 
                 await self.update_main_mode()
@@ -227,6 +216,7 @@ class Menu:
                 self.state_changed=True
             
             if (self.states==[True,False,False] and self.state_changed!=True):
+                self.menu_on_time=ticks_ms()
                 print("Going up")
                 await self.update_value("+")
                 if self.first_press==True:
@@ -234,38 +224,54 @@ class Menu:
                     self.first_press=False
                 
             if (self.states==[False,True,False] and self.state_changed!=True):
+                self.menu_on_time=ticks_ms()
                 print("Going down")
                 await self.update_value("-")
                 if self.first_press==True:
                     self.start_time=ticks_ms()
                     self.first_press=False
                 
-            if (self.states==[True,False,True] and self.state_changed!=True):
+            if (self.states==[True,False,True] and self.state_changed!=True and self.first_press==True):
+                self.first_press=False
+                self.menu_on_time=ticks_ms()
                 print("Next submode")
                 await self.change_submode("+")
                 await self.update_value("u")
+                self.mic.show_menu_in_mic=True
                 
-            if (self.states==[False,True,True] and self.state_changed!=True):
+                
+            if (self.states==[False,True,True] and self.state_changed!=True and self.first_press==True):
+                self.first_press=False
+                self.menu_on_time=ticks_ms()
                 print("Previous submode")
                 await self.change_submode("-")
                 await self.update_value("u")
+                self.mic.show_menu_in_mic=True
             
             #Thought about adding more user control to the decibel levels, decided against, one level of menues too far. Just need a better AGC.
-            if (self.states==[False,False,True] and self.state_changed!=True):
+            if (self.states==[False,False,True] and self.state_changed!=True and self.first_press==True):
+                self.first_press=False
+                self.menu_on_time=ticks_ms()
+                
                 #only change if in the decible select window.
-                if self.sub_mode=="decibel_ceiling":
+                if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="decibel_ceiling":
                     await self.change_sub_submode()
                     self.mic.db_selection=self.sub_sub_mode
+                    self.mic.show_menu_in_mic=True
                     
             
             #toggle the menu on and off
-            if (self.states==[True,True,False] and self.state_changed!=True):
+            if (self.states==[True,True,False] and self.state_changed!=True and self.first_press==True):
+                #deactivate the toggle?
+                self.first_press=False
+                self.menu_on_time=ticks_ms()
+                
                 if self.mic.show_menu_in_mic==False:
                     self.mic.show_menu_in_mic=True
                     self.mic.menu_update_required=True  
                 elif self.mic.show_menu_in_mic==True:
                     self.mic.show_menu_in_mic=False
-                    
+                
                 print("Menu toggled: ", self.mic.show_menu_in_mic)                 
             
             #reset everything if the menu is released.
@@ -273,6 +279,18 @@ class Menu:
                 self.state_changed=False
                 self.first_press=True
                 self.start_time=ticks_ms()
+            
+            if self.state_changed==False:
+                try:
+#                     print("checking menu timeout")
+                    menu_time_elapsed=ticks_diff(ticks_ms(),self.menu_on_time)
+#                     print("Menu time elapsed:", menu_time_elapsed)
+                    menu_time_out=10000
+                    if menu_time_elapsed>menu_time_out:
+                        self.mic.show_menu_in_mic=False
+                except Exception as e:
+                    print("exception:", e)
+                    pass
     
     async def start(self):
         while True:
