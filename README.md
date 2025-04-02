@@ -1,4 +1,4 @@
-# Modern Equalizer
+# Spectrogram 
 
 ![the_thing](./images/the_thing.jpg)
 
