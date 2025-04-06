@@ -81,18 +81,31 @@ class Menu:
             if direction=="+":
                 self.mic.show_menu_in_mic=True
                 self.mic.menu_update_required=True
+                
+                
+                await self.mic.relocate_start_range_index()
+                print("changed resolution, new start range index: ",self.mic.start_range_index)
+                
                 if self.mic.notes_per_led_index<len(self.mic.notes_per_led_options)-1:
                     self.mic.notes_per_led_index+=1
                     self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
                     print("Notes per LED: ", self.mic.notes_per_led)
-                    
+
+                await self.mic.relocate_start_range_index()
+                print("changed resolution (notes/led):", self.mic.notes_per_led, "new start range index: ",self.mic.start_range_index)    
+
+                
             elif direction=="-":
                 self.mic.show_menu_in_mic=True
                 self.mic.menu_update_required=True
+                
                 if self.mic.notes_per_led_index>=1:
                     self.mic.notes_per_led_index-=1
                     self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
                     print("Notes per LED: ", self.mic.notes_per_led)
+                
+                await self.mic.relocate_start_range_index()
+                print("changed resolution (notes/led):", self.mic.notes_per_led, "new start range index: ",self.mic.start_range_index)    
 
             elif direction=="u":
                 print("Notes per LED: ", self.mic.notes_per_led)
@@ -104,16 +117,23 @@ class Menu:
         elif self.sub_modes[self.main_mode_index][self.sub_mode_index]=="start_note":            
             if direction=="+":
                 self.mic.start_range_index+=1
+                self.mic.absolute_note_index+=self.mic.notes_per_led
+                print("absolute_note: ",self.mic.absolute_note_index)
                 
+                #these checks are probably better to do in the ol mic
                 if self.mic.start_range_index>=self.mic.full_window_len-self.mic.number_of_octaves: #this check is important for when changing resolutions, adjusting so the user isn't left in a dead spot
                     self.mic.start_range_index=self.mic.full_window_len-self.mic.number_of_octaves
                 self.mic.menu_update_required=True
 
             elif direction=="-":
-                self.mic.start_range_index-=1                
+                self.mic.start_range_index-=1
+                self.mic.absolute_note_index-=self.mic.notes_per_led                
+                print("absolute_note: ",self.mic.absolute_note_index)
                 
                 if self.mic.start_range_index<=0:
-                    self.mic.start_range_index=0
+                    self.mic.star_range_index=0
+                if self.mic.absolute_note_index<=0:
+                    self.mic.abolute_note_index=0
 #                 if self.mic.start_range_index<=-self.mic.max_window_overreach:
 #                     self.mic.start_range_index=-self.mic.max_window_overreach
                 self.mic.menu_update_required=True

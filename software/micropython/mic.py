@@ -84,6 +84,7 @@ class Mic():
         self.notes_per_led_index=4
         self.notes_per_led_options=[1,2,3,4,6,12]
         self.notes_per_led=self.notes_per_led_options[self.notes_per_led_index]
+        self.absolute_note_index=0
         
         self.start_range_index=0 #this is a variable that determines where in a precomputed list of ranges of indexes to start displaying the fft results 
         self.full_window_len=12
@@ -135,7 +136,19 @@ class Mic():
         for i in np.arange(len(self.note_hues)):
             self.note_hues[i]=(base_hue+(i*hue_diff))%65535
 
-
+    
+    async def relocate_start_range_index(self):
+        #7 octaves, 12leds/xNotes, 12 Leds 
+        self.start_range_index=math.floor(self.absolute_note_index/self.notes_per_led)
+        print("relocated start range index",self.start_range_index)
+        
+        #self.absolute_note_index+=self.notes_per_led
+        #self.absolute_note_index-=self.notes_per_led
+        
+        #The absolute note index Must always be a multiple of the notes_per_led, i.e. it must be rounded when the resolution is changed
+        #self.absolute_note_index=
+        
+    
     def schedule_update(self,str_to_update):
         #queue update
         self.next_data_key=str_to_update
@@ -147,7 +160,7 @@ class Mic():
             #determine the inactive buffer
             inactive_buffer='b' if self.active_buffer=='a' else 'a'
             
-            #update inactive buffers
+            #update inactive buffers, reading the precomputed dictionary using the requested notes_per_LED 
             inactive_menu_buffer=self.precomputed_menus.get(self.next_data_key)
             inactive_fft_buffer_json=self.precomputed_borders.get(self.next_data_key)
             self.full_window_len=len(inactive_fft_buffer_json)
@@ -509,25 +522,7 @@ class Mic():
                         if self.menu_to_operate_with[i]>=0:
                             await leds.show_hsv(2,i,self.menu_to_operate_with[i]+self.octave_shift_hue,255,self.brightness)
                     
-                    
-#                     for i in range(0,self.window_slice_len,int(12/self.notes_per_led)): #the division of 12 is required to scale the right way around, six notes per led should show an octave every two leds, not every six
-#                         
-                        ###need to have an array for each resolution, which is sliced for each update of the start_range_index, and displayed. That instead of calculating from a for loop
-                        ###the result will lool like:
-                        #def compute_octave_display:
-                            #octave_display=np.zeros(self.full_window_len)
-                            #for i in range(0,self.full_window_len,int(12/self.notes_per_led)) #the division of 12 is required to scale the right way around, six notes per led should show an octave every two leds, not every six
-                                ##calculate hue
-                                #octave_display[i]=800*i
-                        
-                        
-                        #for i in range(0,12):
-                            #await leds.show_hsv(2,i,octave_display_slice[i],255,self.brightness) #make each octave a different colour
-                        
-#                         await leds.show_hsv(2,i,800*i,255,self.brightness) #make each octave a different colour
-                        #override LED to show the menu mode (which actually gets overwritten pretty quickly by the fft)
-#                         await leds.show_hsv(1,self.selector_index,24000,255,self.brightness) #make each octave a different colour
-#                         await leds.write(1)
+
                     self.menu_update_required=False
                     
                     
