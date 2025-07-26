@@ -1,4 +1,6 @@
-# Modern Equalizer
+<a href="https://www.tindie.com/stores/zodiacdesigns/?ref=offsite_badges&utm_source=sellers_ZodiacDesigns&utm_medium=badges&utm_campaign=badge_large"><img src="https://d2ss6ovg47m0r5.cloudfront.net/badges/tindie-larges.png" alt="I sell on Tindie" width="200" height="104"></a>
+
+# Spectrogram
 
 ![the_thing](./images/the_thing.jpg)
 
@@ -8,7 +10,6 @@ It's a 36 LED stack of neopixels joy with an integrated microphone, running Micr
 * Acrylic-ready, to show off your creative animations
 * Stepped structure to elimate gaps between edge-lit panels
 * Touch-enabled to switch between all its range of features
-
 
 ### Building
 
