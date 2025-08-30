@@ -53,6 +53,29 @@ class Leds():
     async def write(self, led_arr_num):
         self.led_list[led_arr_num].write()
     
+    #apparently not smooth
+    async def fade_rgb(self, led_arr_num, led_nr, target_hue, steps=30):
+        current_rgb = self.led_list[led_arr_num][led_nr]
+        target_rgb = self.colorHSV(target_hue)
+        for step in range(steps):
+            # Linear interpolation
+            blended = [
+                current_rgb[i] + (target_rgb[i] - current_rgb[i]) * step // steps
+                for i in range(3)
+            ]
+            np[pixel_index] = blended
+            np.write()  # Blocking, but short
+            await asyncio.sleep_ms(0)
+     
+#     async def fade_to_hsv(j,i, target_hue, sat, val, steps=30, delay_ms=10):
+#         current_hue=rgb2hsv(self.led_list[led_arr_num][led_nr])
+#         for step in range(steps):
+#             # Interpolate HSV
+#             blended_hue=blended_hue = current_hue + (target_hue - current_hue) * step // steps
+#             self.led_list[led_arr_num][led_nr] = colourHSV(blended_hue,sat,val)  # Implement this too
+#             np.write()
+#             await asyncio.sleep_ms(0)
+            
     async def colorHSV(self, hue, sat, val):
         # colorHSV time:    64 µs
         """

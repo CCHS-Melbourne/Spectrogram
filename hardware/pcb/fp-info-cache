@@ -1,4 +1,4 @@
-24196236337106271
+24201505183505038
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -97983,8 +97983,15 @@ LED strip ghost
 
 
 0
-4
-4
+3
+3
+Waveshare_ESP32_S3_mini
+Maker's mark
+
+
+0
+0
+0
 Waveshare_ESP32_S3_mini
 WS-ESP32-S3-Mini
 
@@ -97992,6 +97999,20 @@ WS-ESP32-S3-Mini
 0
 18
 18
+Waveshare_ESP32_S3_mini
+eye
+
+
+0
+0
+0
+Waveshare_ESP32_S3_mini
+jumper
+
+
+0
+2
+2
 Waveshare_ESP32_S3_mini
 jumper pad
 
