@@ -6,8 +6,8 @@ from leds import Leds
 from ulab import numpy as np
 from machine import Pin, I2S
 from time import ticks_ms, ticks_diff
-from border_calculator import PrecomputedValues
-from menu_calculator import PrecomputedMenu
+from utils.border_calculator import PrecomputedValues
+from utils.menu_calculator import PrecomputedMenu
 
 # 512 in the FFT 16000/512 ~ 30Hz update.
 # DMA buffer should be at least twice, rounded to power of two.
@@ -44,8 +44,8 @@ scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of t
 
 ID = 0
 SD = Pin(11)
-SCK = Pin(9)
-WS = Pin(10)
+SCK = Pin(10)
+WS = Pin(9)
 
 class Mic():
     def __init__(self):
@@ -96,7 +96,7 @@ class Mic():
         
         #load the precomupted octave menu and select the dictionary entry that corresponds to the current notes_per_led option
         #create two buffers to avoid async clashes
-        self.precomputed_menus=PrecomputedMenu("precomputed_octave_display.json")
+        self.precomputed_menus=PrecomputedMenu("utils/precomputed_octave_display.json")
         if self.precomputed_menus.load():
             JSON_menu=self.precomputed_menus.get(str(self.notes_per_led))
             self.menu_buffer_a=JSON_menu[self.start_range_index:12]
@@ -104,7 +104,7 @@ class Mic():
         
         #load precomputed values and select the dictionary entry that corresponds to the current notes_per_led option
         #create two buffers to avoid async clashes
-        self.precomputed_borders=PrecomputedValues("test_speedup_redo_values.json")
+        self.precomputed_borders=PrecomputedValues("utils/test_speedup_redo_values.json")
         if self.precomputed_borders.load():
             JSON_boot=self.precomputed_borders.get(str(self.notes_per_led))
             self.fft_ranges_buffer_a=JSON_boot[self.start_range_index:12]
@@ -417,13 +417,17 @@ class Mic():
                 
                 dominants_array=np.array(dominants)
                 dominants_notes=np.arange(len(dominants_array))
-                # This line stumped me for an hour: it initializes as unit16, which causes the note calculation to overflow.
+                # This line stumped me for an hour: it initializes as uint16, which causes the note calculation to overflow.
                 # Causing negative numbers, causing green spikes of full brightness (FIXME)
                 current_hues=np.arange(0.,len(dominants_array))
                 
                 for i in range(len(dominants_array)):
                     # See wikipedia: https://en.wikipedia.org/wiki/Piano_key_frequencies
-                    note=int(12.*np.log2(dominants_array[i]/440.)+49.)
+                    #If the log is infinite, just set the note to zero. This changes which note hue is indexed
+                    try:
+                        note=int(12.*np.log2(dominants_array[i]/440.)+49.)
+                    except:
+                        note=0
                     if note<0:
                         note=0
                     dominants_notes[i]=note%12

@@ -17,11 +17,11 @@ class Touch:
         self.rv = 0
         self._maxrawval = 0
         
-        self.no_touch=50000
+        self.no_touch=70000
         self.no_touch_noise=40000
         self.hard_coded_no_touch=self.no_touch
         self.no_touch_noises=[]
-        self.one_touch=65000
+        self.one_touch=80000
         self.hard_coded_touch=self.one_touch
         self.one_touch_noise=40000
         self.no_touch_noises=[]
@@ -55,10 +55,14 @@ class Touch:
     async def rawstate(self):
         self.rv = self._pad.read()  # ~220μs
         
+#         print(self.rv)
+        
         if (self.rv > self.hard_coded_touch):
             self.state=True
         if (self.rv < self.hard_coded_no_touch):
             self.state=False
+            
+#         print(self.state)
 
         #code that intended to follow the unpressed touch value and update the threshold/noise, however, it introduced sticky buttons when buttons were half touched.
 #         if (self.rv < (self.no_touch - self.no_touch_noise)):

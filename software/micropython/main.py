@@ -7,9 +7,9 @@ from menu import Menu
 
 async def main():
     #set_global_exception()
-    touch0 = Touch(Pin(5))
-    touch1 = Touch(Pin(4))
-    touch2 = Touch(Pin(3))
+    touch0 = Touch(Pin(4))
+    touch1 = Touch(Pin(3))
+    touch2 = Touch(Pin(2))
     microphone = Mic()
     menu = Menu(microphone)
     menu.add_touch(touch0)

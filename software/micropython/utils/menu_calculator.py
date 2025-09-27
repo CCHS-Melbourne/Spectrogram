@@ -1,6 +1,6 @@
 #claude gave me this to start with
 import json
-from border_calculator import PrecomputedValues
+from utils.border_calculator import PrecomputedValues
 
 class PrecomputedMenu:
     def __init__(self, filename):
@@ -9,7 +9,7 @@ class PrecomputedMenu:
         
         self.notes_per_led_options=[1,2,3,4,6,12]
         #get the corresponsing lengths of the corresponding FFT resolution windows
-        self.precomputed_borders=PrecomputedValues("test_speedup_redo_values.json")
+        self.precomputed_borders=PrecomputedValues("utils/test_speedup_redo_values.json")
         self.precomputed_borders.load()
         self.fft_bin_lengths={}
         
@@ -73,12 +73,12 @@ def compute_octave_display(self, notes_per_led, menu_length):
 ########################################################################
 ###Run to create JSON file***
 # Create instance and save computed values
-# storage = PrecomputedMenu('precomputed_octave_display.json')
+# storage = PrecomputedMenu('utils/precomputed_octave_display.json')
 # storage.compute_and_save(computation)
 #####COMMENT OUT WHEN DONE OR WILL HANG AND RERUN WHEN HITTING MAIN#####
 
 # # Later, in another program:
-# storage = PrecomputedValues('computed_values.json')
+# storage = PrecomputedValues('utils/computed_values.json')
 # if storage.load():
 #     value = storage.get('50')  # Gets the precomputed value for key '50'
 #     print(value)

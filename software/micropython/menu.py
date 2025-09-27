@@ -325,7 +325,7 @@ class Menu:
             await self.update_menu()
             
             #make the menu pause between updates
-            await asyncio.sleep_ms(500)
+            await asyncio.sleep_ms(400)
         
         
         
