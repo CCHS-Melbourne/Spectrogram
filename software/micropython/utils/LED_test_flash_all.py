@@ -3,7 +3,7 @@ from machine import Pin
 from time import sleep
 
 # Set up the NeoPixel on pin 15 with 8 LEDs (adjust pin and number of LEDs)
-pin = Pin(10, Pin.OUT)
+pin = Pin(8, Pin.OUT)
 num_leds = 36
 np = neopixel.NeoPixel(pin, num_leds)
 

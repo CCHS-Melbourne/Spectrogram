@@ -124,17 +124,23 @@ class Mic():
         self.ring_buffer_hues=np.zeros((3,self.length_of_leds-1))
         self.ring_buffer_intensities=np.zeros((3,self.length_of_leds-1))
         self.buff_index=0
+        self.ring_buffer_hues_rgb=[((0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0)),
+                                   ((0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0)),
+                                   ((0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0))]
 
         # Figure out what tones correspond to what magnitudes out of the fft, with respect to the mic sampling parameters
         self.tones=FREQUENCY_RESOLUTION*np.arange(SAMPLE_COUNT/2)
 
         # Set the colours of notes in synaesthesia mode
-        hue_max=65535 #2^16, according to docs in leds.py
-        base_hue=0 #start with red #started learning with/listening to Kate Bush with: 40000
-        hue_diff=5400 #=65535/12=5400, to maximise the step sizes, with some tuning to get good deep blues, ect. #started learning with/listening to Kate Bush with: 5000
-        self.note_hues=np.arange(12.)
-        for i in np.arange(len(self.note_hues)):
-            self.note_hues[i]=(base_hue+(i*hue_diff))%65535
+#         hue_max=65535 #2^16, according to docs in leds.py
+#         base_hue=0 #start with red #started learning with/listening to Kate Bush with: 40000
+#         hue_diff=5400 #=65535/12=5400, to maximise the step sizes, with some tuning to get good deep blues, ect. #started learning with/listening to Kate Bush with: 5000
+#         self.note_hues=np.arange(12.)
+#         for i in np.arange(len(self.note_hues)):
+#             self.note_hues[i]=(base_hue+(i*hue_diff))%65535
+        
+        #set hues for synesthesia mode based on notes picked in RGB in LED_note_hue_picker, translate to HSV values
+        self.note_hues=[(255,0,0),(255,30,30),(255,60,0),(255,255,0),(255,255,30),(0,255,0),(80,220,10),(0,155,255),(0,0,255),(50,0,255),(255,0,255),(255,255,255)]
 
     
     async def relocate_start_range_index(self):
@@ -419,29 +425,40 @@ class Mic():
                 dominants_notes=np.arange(len(dominants_array))
                 # This line stumped me for an hour: it initializes as uint16, which causes the note calculation to overflow.
                 # Causing negative numbers, causing green spikes of full brightness (FIXME)
-                current_hues=np.arange(0.,len(dominants_array))
+                current_hues=[(),(),(),(),(),(),(),(),(),(),(),()]
                 
+                #for each frequency, calculate what note it is, and map that to one of 12 selected hues.
                 for i in range(len(dominants_array)):
                     # See wikipedia: https://en.wikipedia.org/wiki/Piano_key_frequencies
                     #If the log is infinite, just set the note to zero. This changes which note hue is indexed
                     try:
                         note=int(12.*np.log2(dominants_array[i]/440.)+49.)
+                        dominants_notes[i]=note%12
+                        current_hues[i]=self.note_hues[note%12]
                     except:
-                        note=0
-                    if note<0:
-                        note=0
-                    dominants_notes[i]=note%12
-                    current_hues[i]=self.note_hues[note%12]
+                        note=(0,0,0)
+                        current_hues[i]=note
+#                     if note<0:
+#                         note=0
+                
+#                 print("current_hues:" , current_hues)
+#                 print("fft_mags_array:" , fft_mags_array)
+                
+                fractional_brightness=fft_mags_array/255
+#                 print("fract_bright", fractional_brightness)
+                
+                scaled_hues=[tuple(int(sub_hue*fractional_brightness[index]) for sub_hue in hue) for index,hue in enumerate(current_hues)]
+                
+#                 print(scaled_hues)
                 
                 for i in range(0,len(fft_mags_array)):
-                    await leds.show_hsv(0, i, int(current_hues[i]), 255, int(fft_mags_array[i]))
-                    await leds.show_hsv(1, i, int(self.ring_buffer_hues[(self.buff_index-2)%-3][i]), 255, int(self.ring_buffer_intensities[(self.buff_index-2)%-3][i]))
+                    await leds.show_rgb(0, i, scaled_hues[i])
+                    await leds.show_rgb(1, i, self.ring_buffer_hues_rgb[(self.buff_index-2)%-3][i])
                     if self.show_menu_in_mic == False:
-                        await leds.show_hsv(2, i, int(self.ring_buffer_hues[(self.buff_index-1)%-3][i]), 255, int(self.ring_buffer_intensities[(self.buff_index-1)%-3][i]))
+                        await leds.show_rgb(2, i, self.ring_buffer_hues_rgb[(self.buff_index-1)%-3][i])
                             
-
-                self.ring_buffer_hues[(self.buff_index-1)%-3]=current_hues
-                self.ring_buffer_intensities[(self.buff_index-1)%-3]=fft_mags_array
+# 
+                self.ring_buffer_hues_rgb[(self.buff_index-1)%-3]=scaled_hues
                 self.buff_index-=1
                 self.buff_index%=-3
                 
