@@ -2,18 +2,25 @@ import asyncio
 from time import ticks_ms, ticks_diff
 
 class Menu:
-    def __init__(self, mic):
+    def __init__(self, watchdog, mic):
+        self.watchdog=watchdog
+        
         self.state_changed=False
         self.menu_pix=[[],[],[],[],[],[],[],[],[],[],[],[]]#12 values to fill.
         
         self.main_modes=["Intensity","Synesthesia"]
         self.main_mode_index=0
+        
+        
         self.sub_modes=[['brightness','LEDs_per_px','start_note','decibel_ceiling'],['brightness','LEDs_per_px','start_note','decibel_ceiling']] #On the wishlist but not critical path: 'hue_select'
         self.sub_mode_index=0
         self.sub_sub_modes=[['max_db_set','min_db_set'],['max_db_set','min_db_set']]
         self.sub_sub_mode_index=0
         
         self.mic=mic
+        self.stored_brightness_index=self.mic.brightness_index
+        self.stored_lowest_db_setting=self.mic.lowest_db
+        
         self.touches = []
         self.rvs = [0,0,0]
         self.states = [False,False,False]
@@ -43,6 +50,29 @@ class Menu:
     async def update_main_mode(self):
         self.main_mode_index+=1
         self.main_mode_index%=len(self.main_modes)
+        
+        if self.main_modes[self.main_mode_index]=="Synesthesia":
+            #automatically rescale brightness to turn on faint blue LEDs so notes can be differentiated
+            self.stored_brightness_index=self.mic.brightness_index
+            self.mic.brightness_index=5 #lowest index that shows difference between A, A#, C, C#, ect...
+            self.mic.brightness=self.mic.brightnesses[self.mic.brightness_index]
+            
+            #automatically rescale db range to analyse only the loudest notes - too visually noisy otherwise.
+            self.stored_lowest_db_setting=self.mic.lowest_db
+            self.mic.auto_low_control=True 
+            
+        else:
+            #return the brightness to the stored/user-selected value for intensity
+            self.mic.brightness_index=self.stored_brightness_index
+            
+            self.mic.auto_low_control=False
+            #return the decible range to the previous good-looking/user-set range.
+            self.mic.lowest_db=self.stored_lowest_db_setting
+            
+            
+        self.mic.menu_update_required=True
+            
+            
                         
     async def update_value(self, direction):
         if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="brightness":
@@ -86,8 +116,8 @@ class Menu:
                 await self.mic.relocate_start_range_index()
                 print("changed resolution, new start range index: ",self.mic.start_range_index)
                 
-                if self.mic.notes_per_led_index<len(self.mic.notes_per_led_options)-1:
-                    self.mic.notes_per_led_index+=1
+                if self.mic.notes_per_led_index>=1:
+                    self.mic.notes_per_led_index-=1
                     self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
                     print("Notes per LED: ", self.mic.notes_per_led)
 
@@ -99,8 +129,8 @@ class Menu:
                 self.mic.show_menu_in_mic=True
                 self.mic.menu_update_required=True
                 
-                if self.mic.notes_per_led_index>=1:
-                    self.mic.notes_per_led_index-=1
+                if self.mic.notes_per_led_index<len(self.mic.notes_per_led_options)-1:
+                    self.mic.notes_per_led_index+=1
                     self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
                     print("Notes per LED: ", self.mic.notes_per_led)
                 
@@ -315,6 +345,8 @@ class Menu:
     
     async def start(self):
         while True:
+#             self.watchdog.heartbeat('Menu') #use if you want to be updating and reporting from the menu.
+            
             for index,touch in enumerate(self.touches):                    
                 self.states[index]=touch.state
                 self.rvs[index]=touch.rv
@@ -326,6 +358,7 @@ class Menu:
             
             #make the menu pause between updates
             await asyncio.sleep_ms(400)
+#             await asyncio.sleep_ms(0)
         
         
         
