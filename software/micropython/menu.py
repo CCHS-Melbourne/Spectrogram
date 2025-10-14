@@ -10,12 +10,18 @@ class Menu:
         
         self.main_modes=["Intensity","Synesthesia"]
         self.main_mode_index=0
+        self.main_mode=self.main_modes[self.main_mode_index]
         
         
         self.sub_modes=[['brightness','LEDs_per_px','start_note','decibel_ceiling'],['brightness','LEDs_per_px','start_note','decibel_ceiling']] #On the wishlist but not critical path: 'hue_select'
         self.sub_mode_index=0
-        self.sub_sub_modes=[['max_db_set','min_db_set'],['max_db_set','min_db_set']]
+        self.sub_mode=self.sub_modes[self.main_mode_index][self.sub_mode_index]
+        
+        #dictionary entries should reflect their sub_mode name, so the sub_mode variable can be recycled/used to efficiently point to the right sub_sub modes
+        self.sub_sub_modes={'brightness':[['flat','scaling'],['flat','scaling']],'decibel_ceiling':[['max_db_set','min_db_set'],['max_db_set','min_db_set']]}
         self.sub_sub_mode_index=0
+        #actually store the sub_sub_mode for less verbose menue use
+        self.sub_sub_mode=self.sub_sub_modes[self.sub_mode][0][0]
         
         self.mic=mic
         self.stored_brightness_index=self.mic.brightness_index
@@ -75,7 +81,7 @@ class Menu:
             
                         
     async def update_value(self, direction):
-        if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="brightness":
+        if self.sub_mode=="brightness":
 #             current_time=ticks_ms()
 #             button_held=ticks_diff(current_time,self.start_time,)
 #             print('button held (ms): ',button_held)
@@ -106,7 +112,7 @@ class Menu:
                 
             print("Brightness in menu: ", self.mic.brightness)
         
-        elif self.sub_modes[self.main_mode_index][self.sub_mode_index]=="LEDs_per_px":
+        elif self.sub_mode=="LEDs_per_px":
             
             if direction=="+":
                 self.mic.show_menu_in_mic=True
@@ -144,7 +150,7 @@ class Menu:
                 self.mic.menu_thing_updating="notes_per_px"            
             return
         
-        elif self.sub_modes[self.main_mode_index][self.sub_mode_index]=="start_note":            
+        elif self.sub_mode=="start_note":            
             if direction=="+":
                 self.mic.start_range_index+=1
                 self.mic.absolute_note_index=self.mic.start_range_index*self.mic.notes_per_led
@@ -180,7 +186,7 @@ class Menu:
             return
         
         #Need to make these one general call.
-        elif self.sub_modes[self.main_mode_index][self.sub_mode_index]=="decibel_ceiling":
+        elif self.sub_mode=="decibel_ceiling":
             print("tried to change decibel ceiling")
             
             if direction=="+":
@@ -236,6 +242,7 @@ class Menu:
                 self.mic.menu_thing_updating="highest_db"
             
             return	
+    
             
     async def change_submode(self,direction):
         if direction=="+":
@@ -248,12 +255,32 @@ class Menu:
         self.sub_mode=self.sub_modes[self.main_mode_index][self.sub_mode_index]
         print("Current sub-mode: ",self.sub_mode)
         
+        return
+
+    async def update_sub_value(self):
+        
+        if self.sub_mode=="brightness":
+            self.mic.brightness_sub_mode=self.sub_sub_mode
+            print("brightness submode changed to: ", self.mic.brightness_sub_mode)
+            self.mic.menu_update_required=True
+            self.mic.show_menu_in_mic=True
+        #only change if in the decible select window.
+        if self.sub_mode=="decibel_ceiling":
+            
+            self.mic.db_selection=self.sub_sub_mode
+            self.mic.show_menu_in_mic=True
+        
+        return
+
     async def change_sub_submode(self):        
         self.sub_sub_mode_index+=1
         self.sub_sub_mode_index%=len(self.sub_sub_modes)
-        self.sub_sub_mode=self.sub_sub_modes[self.main_mode_index][self.sub_sub_mode_index]
+       
+        #fetch the sub_sub_modes from a dictionary acording to the main and sub_modes
+        self.sub_sub_mode=self.sub_sub_modes[self.sub_mode][self.main_mode_index][self.sub_sub_mode_index]
         print("Current sub-sub-mode: ",self.sub_sub_mode)
 
+    #check button combinations: call setting functions, then call updating functions, which set values/"things_updating" flags in mic 
     async def update_menu(self):
             #check each button combination and perform an action accordingly
             if (self.states==[True,True,True] and self.state_changed!=True):
@@ -299,17 +326,16 @@ class Menu:
                 await self.update_value("u")
                 self.mic.show_menu_in_mic=True
             
-            #Thought about adding more user control to the decibel levels, decided against, one level of menues too far. Just need a better AGC.
+            #Thought about adding more user control to the decibel levels, decided against, one level of menues too far. Just need a better AGC. So built one.
             if (self.states==[False,False,True] and self.state_changed!=True and self.first_press==True):
                 self.first_press=False
                 self.menu_on_time=ticks_ms()
-                
-                #only change if in the decible select window.
-                if self.sub_modes[self.main_mode_index][self.sub_mode_index]=="decibel_ceiling":
-                    await self.change_sub_submode()
-                    self.mic.db_selection=self.sub_sub_mode
-                    self.mic.show_menu_in_mic=True
-                    
+                print("Toggle sub_sub_mode")
+                #update sub_sub_mode
+                await self.change_sub_submode()
+                #set value flags/"how_things_update" in mic.
+                await self.update_sub_value()
+                self.mic.show_menu_in_mic=True
             
             #toggle the menu on and off
             if (self.states==[True,True,False] and self.state_changed!=True and self.first_press==True):

@@ -114,6 +114,10 @@ class Mic():
         
         self.noise_floor=1000
         
+        self.brightness_sub_modes=['flat','Ssaling']
+        self.brightness_sub_mode=self.brightness_sub_modes[0]
+        self.flat_hue_b=0
+        self.scaling_hue_b=10000
         self.brightnesses=[2,3,4,5,7,10,20,35,50,90,160,255]
         self.brightness_index=4
         self.brightness=self.brightnesses[self.brightness_index] #[0-255]
@@ -526,11 +530,20 @@ class Mic():
             if self.mode=="Intensity":
                 for i in range(len(self.fft_mags_array)):
                     if self.db_scaling[i]>self.lowest_db:
-                        self.scaled_hues[i]=(
-                            (self.intensity_lut[round(self.fft_mags_array[i])][0]*self.brightness)//255,
-                            (self.intensity_lut[round(self.fft_mags_array[i])][1]*self.brightness)//255,
-                            (self.intensity_lut[round(self.fft_mags_array[i])][2]*self.brightness)//255
-                            )
+                        if self.brightness_sub_mode=='flat':
+                            self.scaled_hues[i]=(
+                                (self.intensity_lut[round(self.fft_mags_array[i])][0]*self.brightness)//255,
+                                (self.intensity_lut[round(self.fft_mags_array[i])][1]*self.brightness)//255,
+                                (self.intensity_lut[round(self.fft_mags_array[i])][2]*self.brightness)//255
+                                )
+                    
+                        if self.brightness_sub_mode=="scaling":
+                            self.scaled_hues[i]=(
+                                int(self.intensity_lut[round(self.fft_mags_array[i])][0]*self.brightness*(self.fft_mags_array[i]/255))//255,
+                                int(self.intensity_lut[round(self.fft_mags_array[i])][1]*self.brightness*(self.fft_mags_array[i]/255))//255,
+                                int(self.intensity_lut[round(self.fft_mags_array[i])][2]*self.brightness*(self.fft_mags_array[i]/255))//255
+                                )
+                    
                     else:
                         self.scaled_hues[i]=(0,0,0)
                     
@@ -581,17 +594,19 @@ class Mic():
                         note=round(self.dominant_notes_rep[i]-1)%12 #the -1 is to go from notes starting at 1 for A0 to starting at 0 for the hue index
                         
                         #this works to present 'flat' notes: no scaling of brightness with the intensity of the note
-                        self.scaled_hues[i]=(
-                            (self.note_hues[note][0]*self.brightness)//255,
-                            (self.note_hues[note][1]*self.brightness)//255,
-                            (self.note_hues[note][2]*self.brightness)//255)
+                        if self.brightness_sub_mode=='flat':
+                            self.scaled_hues[i]=(
+                                (self.note_hues[note][0]*self.brightness)//255,
+                                (self.note_hues[note][1]*self.brightness)//255,
+                                (self.note_hues[note][2]*self.brightness)//255)
                         
                         #uncomment this if you want 'bright' notes: notes that scale with their played intensity. Cap to the lowest brightness that differentiates hues.
-#                         self.scaled_hues[i]=(
-#                             int(self.note_hues[note][0]*(self.brightness*(self.fft_mags_array[i]/255)))//255,
-#                             int(self.note_hues[note][1]*(self.brightness*(self.fft_mags_array[i]/255)))//255,
-#                             int(self.note_hues[note][2]*(self.brightness*(self.fft_mags_array[i]/255)))//255)
-#                         print(self.scaled_hues[i])
+                        if self.brightness_sub_mode=='scaling':
+                            self.scaled_hues[i]=(
+                                int(self.note_hues[note][0]*(self.brightness*(self.fft_mags_array[i]/255)))//255,
+                                int(self.note_hues[note][1]*(self.brightness*(self.fft_mags_array[i]/255)))//255,
+                                int(self.note_hues[note][2]*(self.brightness*(self.fft_mags_array[i]/255)))//255)
+                            print(self.scaled_hues[i])
 
                         #too fancy for own good: microtone representation- a colour interperlation for where the dominant frequency in a bin is on the colour scale
 #                         note_frac=note%1
@@ -649,14 +664,20 @@ class Mic():
                     #print("brightness in mic: ",self.brightness)
                     
                     #print make the first pixel, left to right, show with brightness of the display, in one channel only (e.g. red)
-                    await leds.show_hsv(2,11,0,255,int(self.brightness))
-                    
-                    parts_per_bin=21 #255/12
+                    if self.brightness_sub_mode=='flat':
+                        await leds.show_hsv(2,11,self.flat_hue_b,255,int(self.brightness))
+                    else:
+                        await leds.show_hsv(2,11,self.scaling_hue_b,255,int(self.brightness))
+
                     #skip the first pixel, it's already been set.
                     for i in range(1,12):
                         #if the pixel is at the brightness index
                         if i==self.brightness_index:
-                            await leds.show_hsv(2,11-i,0,255,int(self.brightness))    
+                            if self.brightness_sub_mode=='flat':
+                                await leds.show_hsv(2,11-i,self.flat_hue_b,255,int(self.brightness))
+                            else:
+                                await leds.show_hsv(2,11-i,self.scaling_hue_b,255,int(self.brightness))
+                                
                         # otherwise, blank out the non needed menu pixels
                         else:
                             await leds.show_hsv(2,11-i,0,0,0)
