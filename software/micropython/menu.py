@@ -1,6 +1,7 @@
 import asyncio
 from time import ticks_ms, ticks_diff
 
+#there's a lot of janky double handling in this, but I'd have to rip it apart to fix up.
 class Menu:
     def __init__(self, watchdog, mic):
         self.watchdog=watchdog
@@ -8,20 +9,22 @@ class Menu:
         self.state_changed=False
         self.menu_pix=[[],[],[],[],[],[],[],[],[],[],[],[]]#12 values to fill.
         
-        self.main_modes=["Intensity","Synesthesia"]
+        self.main_modes=["intensity","synesthesia"]
         self.main_mode_index=0
         self.main_mode=self.main_modes[self.main_mode_index]
         
         
-        self.sub_modes=[['brightness','LEDs_per_px','start_note','decibel_ceiling'],['brightness','LEDs_per_px','start_note','decibel_ceiling']] #On the wishlist but not critical path: 'hue_select'
+        self.sub_modes=['brightness','resolution','decibel_ceiling'] #On the wishlist but not critical path: 'hue_select'
         self.sub_mode_index=0
-        self.sub_mode=self.sub_modes[self.main_mode_index][self.sub_mode_index]
+        self.sub_mode=self.sub_modes[self.sub_mode_index]
         
         #dictionary entries should reflect their sub_mode name, so the sub_mode variable can be recycled/used to efficiently point to the right sub_sub modes
-        self.sub_sub_modes={'brightness':[['flat','scaling'],['flat','scaling']],'decibel_ceiling':[['max_db_set','min_db_set'],['max_db_set','min_db_set']]}
-        self.sub_sub_mode_index=0
+        self.sub_sub_modes={'brightness':['flat','scaling'],'resolution':['notes_per_pix','panning'],'decibel_ceiling':['max_db_set','min_db_set']}
+        #the submodes need a dictionary of their indexes, so that one index is not shared across all submodes, leading to user inputs that appear to do nothing but are acutally wrapping the submode index around, making it appear like no mode switch has happened.
+        self.sub_sub_mode_indexes={'brightness':0,'resolution':0,'decibel_ceiling':0}
         #actually store the sub_sub_mode for less verbose menue use
-        self.sub_sub_mode=self.sub_sub_modes[self.sub_mode][0][0]
+        self.sub_sub_mode=self.sub_sub_modes[self.sub_mode][0]
+        self.sub_sub_mode_index=self.sub_sub_mode_indexes[self.sub_mode]
         
         self.mic=mic
         self.stored_brightness_index=self.mic.brightness_index
@@ -112,82 +115,88 @@ class Menu:
                 
             print("Brightness in menu: ", self.mic.brightness)
         
-        elif self.sub_mode=="LEDs_per_px":
+        elif self.sub_mode=='resolution':
+            print("changing resolution")
             
-            if direction=="+":
-                self.mic.show_menu_in_mic=True
-                self.mic.menu_update_required=True
+            #set the menu update required by the mic LED updater
+            self.mic.menu_thing_updating="resolution" 
+            
+            if self.mic.resolution_sub_mode=="notes_per_pix":
                 
-                
-                await self.mic.relocate_start_range_index()
-                print("changed resolution, new start range index: ",self.mic.start_range_index)
-                
-                if self.mic.notes_per_led_index>=1:
-                    self.mic.notes_per_led_index-=1
-                    self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
+                if direction=="+":
+                    self.mic.show_menu_in_mic=True
+                    self.mic.menu_update_required=True
+                    
+                    
+                    await self.mic.relocate_start_range_index()
+                    print("changed resolution, new start range index: ",self.mic.start_range_index)
+                    
+                    if self.mic.notes_per_led_index>=1:
+                        self.mic.notes_per_led_index-=1
+                        self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
+                        print("Notes per LED: ", self.mic.notes_per_led)
+
+                    await self.mic.relocate_start_range_index()
+                    print("changed resolution (notes/led):", self.mic.notes_per_led, "new start range index: ",self.mic.start_range_index)    
+
+                    
+                elif direction=="-":
+                    self.mic.show_menu_in_mic=True
+                    self.mic.menu_update_required=True
+                    
+                    if self.mic.notes_per_led_index<len(self.mic.notes_per_led_options)-1:
+                        self.mic.notes_per_led_index+=1
+                        self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
+                        print("Notes per LED: ", self.mic.notes_per_led)
+                    
+                    await self.mic.relocate_start_range_index()
+                    print("changed resolution (notes/led):", self.mic.notes_per_led, "new start range index: ",self.mic.start_range_index)    
+
+                elif direction=="u":
                     print("Notes per LED: ", self.mic.notes_per_led)
-
-                await self.mic.relocate_start_range_index()
-                print("changed resolution (notes/led):", self.mic.notes_per_led, "new start range index: ",self.mic.start_range_index)    
-
-                
-            elif direction=="-":
-                self.mic.show_menu_in_mic=True
-                self.mic.menu_update_required=True
-                
-                if self.mic.notes_per_led_index<len(self.mic.notes_per_led_options)-1:
-                    self.mic.notes_per_led_index+=1
-                    self.mic.notes_per_led=self.mic.notes_per_led_options[self.mic.notes_per_led_index]
-                    print("Notes per LED: ", self.mic.notes_per_led)
-                
-                await self.mic.relocate_start_range_index()
-                print("changed resolution (notes/led):", self.mic.notes_per_led, "new start range index: ",self.mic.start_range_index)    
-
-            elif direction=="u":
-                print("Notes per LED: ", self.mic.notes_per_led)
-                self.mic.show_menu_in_mic=True
-                self.mic.menu_update_required=True
-                self.mic.menu_thing_updating="notes_per_px"            
-            return
-        
-        elif self.sub_mode=="start_note":            
-            if direction=="+":
-                self.mic.start_range_index+=1
-                self.mic.absolute_note_index=self.mic.start_range_index*self.mic.notes_per_led
-                print("absolute_note: ",self.mic.absolute_note_index)
-                
-                #these checks are probably better to do in the ol mic
-                if self.mic.start_range_index>=self.mic.full_window_len-self.mic.number_of_octaves: #this check is important for when changing resolutions, adjusting so the user isn't left in a dead spot
-                    self.mic.start_range_index=self.mic.full_window_len-self.mic.number_of_octaves
+                    self.mic.show_menu_in_mic=True
+                    self.mic.menu_update_required=True
+                               
+                return
+            
+            elif self.mic.resolution_sub_mode=="panning":            
+                if direction=="+":
+                    self.mic.start_range_index+=1
                     self.mic.absolute_note_index=self.mic.start_range_index*self.mic.notes_per_led
-                self.mic.menu_update_required=True
-
-            elif direction=="-":
-                if self.mic.start_range_index>=1:
-                    self.mic.start_range_index-=1
-                    self.mic.absolute_note_index-=self.mic.notes_per_led                
                     print("absolute_note: ",self.mic.absolute_note_index)
                     
-                if self.mic.start_range_index<=0:
-                    self.mic.star_range_index=0
-                if self.mic.absolute_note_index<=0:
-                    self.mic.abolute_note_index=0
-#                 if self.mic.start_range_index<=-self.mic.max_window_overreach:
-#                     self.mic.start_range_index=-self.mic.max_window_overreach
-                self.mic.menu_update_required=True
-                       
-            elif direction=="u":
-                #tell the menu that an update is required, needed or it will draw every frame.
-                self.mic.menu_update_required=True
-                #set the menu update required by the mic LED updater
-                self.mic.menu_thing_updating="start_range_index"
-                            
-            print("Start range index: ", self.mic.start_range_index)
-            return
+                    #these checks are probably better to do in the ol mic
+                    if self.mic.start_range_index>=self.mic.full_window_len-self.mic.number_of_octaves: #this check is important for when changing resolutions, adjusting so the user isn't left in a dead spot
+                        self.mic.start_range_index=self.mic.full_window_len-self.mic.number_of_octaves
+                        self.mic.absolute_note_index=self.mic.start_range_index*self.mic.notes_per_led
+                    self.mic.menu_update_required=True
+
+                elif direction=="-":
+                    if self.mic.start_range_index>=1:
+                        self.mic.start_range_index-=1
+                        self.mic.absolute_note_index-=self.mic.notes_per_led                
+                        print("absolute_note: ",self.mic.absolute_note_index)
+                        
+                    if self.mic.start_range_index<=0:
+                        self.mic.star_range_index=0
+                    if self.mic.absolute_note_index<=0:
+                        self.mic.abolute_note_index=0
+    #                 if self.mic.start_range_index<=-self.mic.max_window_overreach:
+    #                     self.mic.start_range_index=-self.mic.max_window_overreach
+                    self.mic.menu_update_required=True
+                           
+                elif direction=="u":
+                    #tell the menu that an update is required, needed or it will draw every frame.
+                    self.mic.menu_update_required=True
+                    self.mic.show_menu_in_mic=True
+                    
+                                
+                print("Start range index: ", self.mic.start_range_index)
+                return
         
         #Need to make these one general call.
         elif self.sub_mode=="decibel_ceiling":
-            print("tried to change decibel ceiling")
+            print("changing decibel ceiling")
             
             if direction=="+":
                 #tell the menu that an update is required, needed or it will draw every frame.
@@ -247,13 +256,15 @@ class Menu:
     async def change_submode(self,direction):
         if direction=="+":
             self.sub_mode_index+=1
-            self.sub_mode_index%=len(self.sub_modes[self.main_mode_index])
+            self.sub_mode_index%=len(self.sub_modes)
         elif direction=="-":
             self.sub_mode_index-=1
-            self.sub_mode_index%=len(self.sub_modes[self.main_mode_index])
+            self.sub_mode_index%=len(self.sub_modes)
         
-        self.sub_mode=self.sub_modes[self.main_mode_index][self.sub_mode_index]
+        self.sub_mode=self.sub_modes[self.sub_mode_index]
         print("Current sub-mode: ",self.sub_mode)
+        self.sub_sub_mode_index=self.sub_sub_mode_indexes[self.sub_mode]
+        print("Changed sub-mode's sub_sub_index to stored index:", self.sub_sub_mode_index)
         
         return
 
@@ -264,21 +275,35 @@ class Menu:
             print("brightness submode changed to: ", self.mic.brightness_sub_mode)
             self.mic.menu_update_required=True
             self.mic.show_menu_in_mic=True
-        #only change if in the decible select window.
-        if self.sub_mode=="decibel_ceiling":
-            
-            self.mic.db_selection=self.sub_sub_mode
+        
+        if self.sub_mode=="resolution":
+            self.mic.resolution_sub_mode=self.sub_sub_mode
+            print("resolution submode changed to: ", self.mic.resolution_sub_mode)
+            self.mic.menu_update_required=True
             self.mic.show_menu_in_mic=True
         
+        #only change if in the decible select window.
+        if self.sub_mode=="decibel_ceiling":
+            self.mic.db_selection=self.sub_sub_mode
+            self.mic.menu_update_required=True
+            self.mic.show_menu_in_mic=True
         return
 
     async def change_sub_submode(self):        
         self.sub_sub_mode_index+=1
-        self.sub_sub_mode_index%=len(self.sub_sub_modes)
-       
-        #fetch the sub_sub_modes from a dictionary acording to the main and sub_modes
-        self.sub_sub_mode=self.sub_sub_modes[self.sub_mode][self.main_mode_index][self.sub_sub_mode_index]
-        print("Current sub-sub-mode: ",self.sub_sub_mode)
+        self.sub_sub_mode_index%=len(self.sub_sub_modes[self.sub_mode])
+        #and update dictionary too:
+        self.sub_sub_mode_indexes[self.sub_mode]=self.sub_sub_mode_index
+        
+        print("Changed sub-mode", self.sub_mode, "\'s sub_sub_index to stored index:", self.sub_sub_mode_index)
+        
+        try:
+            #fetch the sub_sub_modes from a dictionary acording to the sub_modes and internal index thereof
+            self.sub_sub_mode=self.sub_sub_modes[self.sub_mode][self.sub_sub_mode_index]
+            print("Just changed sub-sub-mode to: ",self.sub_sub_mode)
+        except Exception as e:
+            print(e)
+            print("Probably that the dictionary key wasn't found")
 
     #check button combinations: call setting functions, then call updating functions, which set values/"things_updating" flags in mic 
     async def update_menu(self):

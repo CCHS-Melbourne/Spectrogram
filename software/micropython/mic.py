@@ -82,8 +82,7 @@ class Mic():
                                 bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
                                 ibuf=I2S_SAMPLE_BYTES)
 
-        self.modes=["Intensity","Synesthesia"]
-        self.mode=self.modes[0]
+        self.mode="intensity"
         
         self.show_menu_in_mic=False
         self.menu_thing_updating="brightness"
@@ -114,10 +113,14 @@ class Mic():
         
         self.noise_floor=1000
         
-        self.brightness_sub_modes=['flat','Ssaling']
-        self.brightness_sub_mode=self.brightness_sub_modes[0]
+        self.resolution_sub_mode='notes_per_pix'
+        
+        #intializing varables here is fine, but their handling and setting should be in the menu.
+        self.brightness_sub_mode='flat'
         self.flat_hue_b=0
         self.scaling_hue_b=10000
+        
+        
         self.brightnesses=[2,3,4,5,7,10,20,35,50,90,160,255]
         self.brightness_index=4
         self.brightness=self.brightnesses[self.brightness_index] #[0-255]
@@ -527,7 +530,7 @@ class Mic():
             
             # Apply cosmetics to values calculated above
             tint1=ticks_ms()
-            if self.mode=="Intensity":
+            if self.mode=="intensity":
                 for i in range(len(self.fft_mags_array)):
                     if self.db_scaling[i]>self.lowest_db:
                         if self.brightness_sub_mode=='flat':
@@ -575,7 +578,7 @@ class Mic():
             
             
             tsyn1 = ticks_ms()
-            if self.mode=="Synesthesia":
+            if self.mode=="synesthesia":
 #                 #use precomputed note representation to determine what hue to assign
 #                 represented_notes=[(rep-1)%12 for rep in self.dominant_notes_rep]
 # #                 print(dominants_notes)
@@ -606,7 +609,7 @@ class Mic():
                                 int(self.note_hues[note][0]*(self.brightness*(self.fft_mags_array[i]/255)))//255,
                                 int(self.note_hues[note][1]*(self.brightness*(self.fft_mags_array[i]/255)))//255,
                                 int(self.note_hues[note][2]*(self.brightness*(self.fft_mags_array[i]/255)))//255)
-                            print(self.scaled_hues[i])
+#                             print(self.scaled_hues[i])
 
                         #too fancy for own good: microtone representation- a colour interperlation for where the dominant frequency in a bin is on the colour scale
 #                         note_frac=note%1
@@ -656,17 +659,20 @@ class Mic():
             
             if self.show_menu_in_mic == True:
                 if self.menu_thing_updating=="brightness" and self.menu_update_required==True:                       
-                    #update onboard LED/mini-menu
-#                         leds.show_hsv(3,0,0,0,10)
-                    leds.status_pix[0]=(0,20,0)#the status LED is grb
-                    await leds.write(3)
+                    
                     
                     #print("brightness in mic: ",self.brightness)
                     
                     #print make the first pixel, left to right, show with brightness of the display, in one channel only (e.g. red)
                     if self.brightness_sub_mode=='flat':
+                        #update onboard LED/mini-menu
+                        leds.status_pix[0]=(0,20,0)#the status LED is grb
+                        await leds.write(3)
                         await leds.show_hsv(2,11,self.flat_hue_b,255,int(self.brightness))
                     else:
+                        #update onboard LED/mini-menu
+                        leds.status_pix[0]=(15,20,0)#the status LED is grb
+                        await leds.write(3)
                         await leds.show_hsv(2,11,self.scaling_hue_b,255,int(self.brightness))
 
                     #skip the first pixel, it's already been set.
@@ -685,53 +691,54 @@ class Mic():
                     #reset to allow the next update
                     self.menu_update_required=False
                     
-                if self.menu_thing_updating=="notes_per_px" and self.menu_update_required==True:
-                    #update onboard LED/mini-menu
-                    leds.status_pix[0]=(10,20,0)#the status LED is grb
-                    await leds.write(3)
-            
-                    #update fft_ranges if needed
-                    self.schedule_update(str(self.notes_per_led))
-                    if self.update_queued:
-                        await self.process_update()
-                                            
-                    for i in range(0,12): #blank out LEDs
-                        await leds.show_hsv(2,i,0,0,0)
-                        #3print(self.menu_to_operate_with)
-                        try:
-                            if self.menu_to_operate_with[i]==-1:
-                                await leds.show_hsv(2,i,0,0,0)
-#                             await leds.show_hsv(2,i,self.notes_per_pix_hue,255,int(self.brightness*0.1))
-                            elif self.menu_to_operate_with[i]>=0:
-                                await leds.show_hsv(2,i,self.menu_to_operate_with[i],255,self.brightness)
-                        except:
+                if self.menu_thing_updating=="resolution" and self.menu_update_required==True:
+                    if self.resolution_sub_mode=="notes_per_pix" and self.menu_update_required==True:
+                        #update onboard LED/mini-menu
+                        leds.status_pix[0]=(5,30,0)#the status LED is grb
+                        await leds.write(3)
+                
+                        #update fft_ranges if needed
+                        self.schedule_update(str(self.notes_per_led))
+                        if self.update_queued:
+                            await self.process_update()
+                                                
+                        for i in range(0,12): #blank out LEDs
                             await leds.show_hsv(2,i,0,0,0)
-                            
-#                     for i in range(0,self.window_slice_len,int(12/self.notes_per_led)): #the division of 12 is required to scale the right way around, six notes per led should show an octave every two leds, not every six
-#                         await leds.show_hsv(2,i,900*i,255,self.brightness) #make each octave a different colour
-                    self.menu_update_required=False
-                    
-                if self.menu_thing_updating=="start_range_index" and self.menu_update_required==True:
-                    #update onboard LED/mini-menu
-                    leds.status_pix[0]=(0,0,20)#the status LED is grb, blue is distinct, the purple turns to red through the flex.
-                    await leds.write(3)
-                    
-#                     if self.start_range_index>=self.window_slice_len+self.max_window_overreach:
-#                         self.start_range_index=self.window_slice_len+self.max_window_overreach
-                    
-                    #update fft_ranges if needed
-                    self.schedule_update(str(self.notes_per_led))
-                    if self.update_queued:
-                        await self.process_update()
-                    
-                    #3print("start_range_index_in_mic: ",self.start_range_index)
-                    for i in range(0,12): #blank out LEDs
-                        await leds.show_hsv(2,i,0,0,0)                    
-                        if self.menu_to_operate_with[i]>=0:
-                            await leds.show_hsv(2,i,self.menu_to_operate_with[i]+self.octave_shift_hue,255,self.brightness)
-                    
+                            #3print(self.menu_to_operate_with)
+                            try:
+                                if self.menu_to_operate_with[i]==-1:
+                                    await leds.show_hsv(2,i,0,0,0)
+    #                             await leds.show_hsv(2,i,self.notes_per_pix_hue,255,int(self.brightness*0.1))
+                                elif self.menu_to_operate_with[i]>=0:
+                                    await leds.show_hsv(2,i,self.menu_to_operate_with[i],255,self.brightness)
+                            except:
+                                await leds.show_hsv(2,i,0,0,0)
+                                
+    #                     for i in range(0,self.window_slice_len,int(12/self.notes_per_led)): #the division of 12 is required to scale the right way around, six notes per led should show an octave every two leds, not every six
+    #                         await leds.show_hsv(2,i,900*i,255,self.brightness) #make each octave a different colour
+                        self.menu_update_required=False
+                        
+                    if self.resolution_sub_mode=="panning" and self.menu_update_required==True:
+                        #update onboard LED/mini-menu
+                        leds.status_pix[0]=(0,0,20)#the status LED is grb, blue is distinct, the purple turns to red through the flex.
+                        await leds.write(3)
+                        
+    #                     if self.start_range_index>=self.window_slice_len+self.max_window_overreach:
+    #                         self.start_range_index=self.window_slice_len+self.max_window_overreach
+                        
+                        #update fft_ranges if needed
+                        self.schedule_update(str(self.notes_per_led))
+                        if self.update_queued:
+                            await self.process_update()
+                        
+                        #3print("start_range_index_in_mic: ",self.start_range_index)
+                        for i in range(0,12): #blank out LEDs
+                            await leds.show_hsv(2,i,0,0,0)                    
+                            if self.menu_to_operate_with[i]>=0:
+                                await leds.show_hsv(2,i,self.menu_to_operate_with[i]+self.octave_shift_hue,255,self.brightness)
+                        
 
-                    self.menu_update_required=False
+                        self.menu_update_required=False
                     
                     
                 if self.menu_thing_updating=="highest_db" and self.menu_update_required==True:
