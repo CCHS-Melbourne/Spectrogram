@@ -12,14 +12,14 @@ FREQUENCY_RESOLUTION=SAMPLE_RATE/SAMPLE_COUNT
 TUNING_A4_HZ=440.
 BINS_PER_OCTAVE=2
 
-class PrecomputedNearestTones:
+class PrecomputedValues:
     def __init__(self, filename):
         self.filename = filename
         self.data = {}
         
         # Calculate the defined frequencies of the musical notes
         #were initialized with 1.,180., maybe important, and yes, it sure was! borked the calculation of the frequencies, amazing
-        self.notes=np.arange(1.,87.+1)# # This is the range of notes I can performantly resolve with the FFT settings
+        self.notes=np.arange(1.,109.)# must be a multiple of 12, this range determines how many notes are stored in memory and are accessed by the spectrogram
         self.note_frequencies=TUNING_A4_HZ*(2**((self.notes-49)/12))
         print("notes:",self.note_frequencies)
         print(len(self.notes))
@@ -64,6 +64,15 @@ class PrecomputedNearestTones:
 #         print(self.data.get(key))
         return self.data.get(key)
 
+# Example usage
+def example_computation():
+    """Example function to compute some values"""
+    result = {}
+    # Compute some expensive calculations
+    for i in range(100):
+        result[str(i)] = i * i
+    return result
+
 
 def computation(self):
     result = {}
@@ -83,11 +92,7 @@ def find_nearest_fft_tone_indexes(tones, note_frequencies):
     nearest_tone_indexes=[]
     note_index=0
     for i in range(len(tones)-1):
-        try:
-            print("frequency: ",note_frequencies[note_index]," bottom match: ",tones[i]," top match: ", tones[i+1])
-        except Exception as e:
-            print(e)
-            break
+        print("frequency: ",note_frequencies[note_index]," bottom match: ",tones[i]," top match: ", tones[i+1])
         
         if (note_frequencies[note_index]<tones[i]):
             closest_match_index=i
@@ -110,10 +115,9 @@ def find_nearest_fft_tone_indexes(tones, note_frequencies):
         
     print("nearest tone indexes: ",nearest_tone_indexes)
     return nearest_tone_indexes
-
     
 # Create instance and save computed values
-# storage = PrecomputedNearestTones('utils/binned_indexes_of_tones_nearest_to_musical_notes.json')
+# storage = PrecomputedValues('utils/binned_idexes_nearest_to_musical_tones.json')
 # storage.compute_and_save(computation)
 #####COMMENT OUT WHEN DONE OR WILL HANG AND RERUN WHEN HITTING MAIN#####
 

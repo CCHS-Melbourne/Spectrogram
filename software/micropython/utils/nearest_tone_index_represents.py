@@ -19,7 +19,7 @@ class PrecomputedToneRepresentations:
         
         # Calculate the defined frequencies of the musical notes
         #were initialized with 1.,180., maybe important, and yes, it sure was! borked the calculation of the frequencies, amazing
-        self.notes=np.arange(1.,109.)# must be a multiple of 12, this range determines how many notes are stored in memory and are accessed by the spectrogram
+        self.notes=np.arange(1,87+1)# This is the range of notes I can performantly resolve with the FFT settings
         self.note_frequencies=TUNING_A4_HZ*(2**((self.notes-49)/12))
         print("notes:",self.note_frequencies)
         print(len(self.notes))
@@ -63,15 +63,6 @@ class PrecomputedToneRepresentations:
         #return self.data.get(key, default)
 #         print(self.data.get(key))
         return self.data.get(key)
-
-# Example usage
-def example_computation():
-    """Example function to compute some values"""
-    result = {}
-    # Compute some expensive calculations
-    for i in range(100):
-        result[str(i)] = i * i
-    return result
 
 def computation(self):
     result = {}

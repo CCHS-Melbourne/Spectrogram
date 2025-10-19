@@ -7,15 +7,14 @@ from menu import Menu
 import utime
 
 class Watchdog:
-    
-    def __init__(check_interval_ms=100, alert_threshold_ms=200):
+    def __init__(self, check_interval_ms=100, alert_threshold_ms=200):
         self.task_heartbeats={}
         self.check_interval_ms=100
         self.alert_threshold_ms=200
     
     def heartbeat(self, taskname):
         now=utime.ticks_ms()
-        self.tasks[taskname]=now
+        self.task_heartbeats[taskname]=now
     
         
     async def watch(self):
@@ -24,8 +23,9 @@ class Watchdog:
             await asyncio.sleep_ms(self.check_interval_ms)
             now = utime.ticks_ms()
             
-            for task_name, last_heartbeat in task_heartbeats.items():
+            for task_name, last_heartbeat in self.task_heartbeats.items():
                 elapsed = utime.ticks_diff(now, last_heartbeat)
+#                 print(f"{task_name} {elapsed}ms")
                 if elapsed > self.alert_threshold_ms:
                     print(f"⚠️  {task_name} hasn't run in {elapsed}ms!")
 
@@ -41,10 +41,9 @@ async def main():
     menu.add_touch(touch0)
     menu.add_touch(touch1)
     menu.add_touch(touch2)
-    asyncio.create_task(watchdog())
 
     #print("Starting main gather...")
-    await asyncio.gather(watchdog.watch(),touch0.start(), touch1.start(), touch2.start(), menu.start(), microphone.start(), return_exceptions=True)
+    await asyncio.gather(watchdog.watch(),touch0.start(), touch1.start(), touch2.start(), menu.start(), microphone.start())
     #await asyncio.gather(microphone.start())
 try:
     asyncio.run(main())

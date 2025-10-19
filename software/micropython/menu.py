@@ -63,7 +63,7 @@ class Menu:
         if self.main_modes[self.main_mode_index]=="Synesthesia":
             #automatically rescale brightness to turn on faint blue LEDs so notes can be differentiated
             self.stored_brightness_index=self.mic.brightness_index
-            self.mic.brightness_index=5 #lowest index that shows difference between A, A#, C, C#, ect...
+#             self.mic.brightness_index=5 #lowest index that shows difference between A, A#, C, C#, ect...
             self.mic.brightness=self.mic.brightnesses[self.mic.brightness_index]
             
             #automatically rescale db range to analyse only the loudest notes - too visually noisy otherwise.
@@ -73,8 +73,8 @@ class Menu:
         else:
             #return the brightness to the stored/user-selected value for intensity
             self.mic.brightness_index=self.stored_brightness_index
-            
-            self.mic.auto_low_control=False
+#             #a hypothethical feature: make the bottom of the synesthesia mode cut out noise.
+#             self.mic.auto_low_control=False
             #return the decible range to the previous good-looking/user-set range.
             self.mic.lowest_db=self.stored_lowest_db_setting
             
