@@ -28,7 +28,7 @@ class Menu:
         
         self.mic=mic
         self.stored_brightness_index=self.mic.brightness_index
-        self.stored_lowest_db_setting=self.mic.lowest_db
+        self.stored_low_db_set_point_setting=self.mic.low_db_set_point
         
         self.touches = []
         self.rvs = [0,0,0]
@@ -67,7 +67,7 @@ class Menu:
             self.mic.brightness=self.mic.brightnesses[self.mic.brightness_index]
             
             #automatically rescale db range to analyse only the loudest notes - too visually noisy otherwise.
-            self.stored_lowest_db_setting=self.mic.lowest_db
+            self.stored_low_db_set_point_setting=self.mic.low_db_set_point
             self.mic.auto_low_control=True 
             
         else:
@@ -76,7 +76,7 @@ class Menu:
 #             #a hypothethical feature: make the bottom of the synesthesia mode cut out noise.
 #             self.mic.auto_low_control=False
             #return the decible range to the previous good-looking/user-set range.
-            self.mic.lowest_db=self.stored_lowest_db_setting
+            self.mic.low_db_set_point=self.stored_low_db_set_point_setting
             
             
         self.mic.menu_update_required=True
@@ -206,18 +206,18 @@ class Menu:
                 
                 if self.mic.db_selection=='max_db_set':
                     #control the movement of the pixel indicating the top of the colourmapping range
-                    if self.mic.max_db_set_point<=-20:
+                    if self.mic.max_db_set_point<=-10:
                         self.mic.max_db_set_point+=10
                         print("increased max db range to: ", self.mic.max_db_set_point)
-                    elif self.mic.max_db_set_point>-20:
+                    elif self.mic.max_db_set_point>0:
                         print("can't increase maxDB, if this is a concern to your visualization quest, you need to get hearing protection")
                 else:
                     #control the position of the pixel indicating the bottom of the colourmapping range
-                    if self.mic.lowest_db<=self.mic.max_db_set_point-20:
-                        self.mic.lowest_db+=10
-                        print("increased min db range to: ", self.mic.lowest_db)
+                    if self.mic.low_db_set_point<=self.mic.max_db_set_point-20:
+                        self.mic.low_db_set_point+=10
+                        print("increased min db range to: ", self.mic.low_db_set_point)
                     #make sure the min db value cant get too near to the max db value
-                    elif self.mic.lowest_db>self.mic.max_db_set_point-20:
+                    elif self.mic.low_db_set_point>self.mic.max_db_set_point-20:
                         print("can't increase/raise to the lowest db, you'll lose all resolution")
                 
                 
@@ -229,18 +229,18 @@ class Menu:
                 
                 if self.mic.db_selection=='max_db_set':
                     #control the movement of the pixel indicating the top of the colourmapping range
-                    if self.mic.max_db_set_point>=self.mic.lowest_db+20:
+                    if self.mic.max_db_set_point>=self.mic.low_db_set_point+20:
                         self.mic.max_db_set_point-=10
                         print("decreased max db range to: ", self.mic.max_db_set_point)
-                    elif self.mic.max_db_set_point<self.mic.lowest_db+20:
+                    elif self.mic.max_db_set_point<self.mic.low_db_set_point+20:
                         print("can't decrease below/near to the lowest db, won't decrease range further, you'll lose all resolution")
                 else:
                     #control the position of the pixel indicating the bottom of the colourmapping range
-                    if self.mic.lowest_db>=-110:
-                        self.mic.lowest_db-=10
-                        print("decreased min db range to: ", self.mic.lowest_db)
+                    if self.mic.low_db_set_point>=-100:
+                        self.mic.low_db_set_point-=10
+                        print("decreased min db range to: ", self.mic.low_db_set_point)
                     #make sure the min db value cant get too near to the max db value
-                    elif self.mic.lowest_db<-110:
+                    elif self.mic.low_db_set_point<-110:
                         print("can't lower any further, you'll lose sight of the pixel. If you can hear down here, you must get overstimulated very easily.")                    
             
             
@@ -249,6 +249,12 @@ class Menu:
                 self.mic.menu_update_required=True
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
+            
+            #perfrom updates last (here, last, once, instead of repeated inside each case)
+            self.mic.scale_and_clip_db_range[1]=self.mic.max_db_set_point
+            print("set max db in db-to-colour-index interp")
+            self.mic.scale_and_clip_db_range[0]=self.mic.low_db_set_point
+            print("set min db in db-to-colour-index interp")
             
             return	
     
@@ -390,6 +396,8 @@ class Menu:
                     menu_time_out=10000
                     if menu_time_elapsed>menu_time_out:
                         self.mic.show_menu_in_mic=False
+                        #comment out below if you want a permanent status LED
+                        self.mic.status_led_off=True
                 except Exception as e:
                     print("exception:", e)
                     pass

@@ -84,6 +84,7 @@ class Mic():
 
         self.mode="intensity"
         
+        self.status_led_off=False
         self.show_menu_in_mic=False
         self.menu_thing_updating="brightness"
         self.menu_update_required=False
@@ -93,13 +94,13 @@ class Mic():
         self.db_scaling=np.zeros(12,dtype=np.float)
         self.max_db_set_point=-40
         self.highest_db_on_record=self.max_db_set_point
-        self.lowest_db=-80
+        self.low_db_set_point=-80
         self.db_selection="max_db_set"
         self.last_loudest_reading=-80
         self.auto_low_control=False
         
         #determines the values that are actually accounted for in display colour scaling
-        self.summed_magnitude_range=np.array([self.lowest_db, self.highest_db_on_record]) #for colouring: values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
+        self.scale_and_clip_db_range=np.array([self.low_db_set_point, self.highest_db_on_record]) #for colouring: values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
         # Preallocated arrays
         #stores result from fft
         self.binned_fft_calc=np.zeros(12,dtype=np.float)
@@ -209,6 +210,7 @@ class Mic():
         self.intensity_hues=[(0,0,0)]*12
         #replace masks and HSV calcs with LUT
         self.intensity_lut = create_color_lut()
+        self.colour_index_range=np.array([0,255])
 #         print("intensity_lut",self.intensity_lut)
         
         #set hues for synesthesia mode based on notes picked in RGB in LED_note_hue_picker, translate to HSV values
@@ -225,6 +227,10 @@ class Mic():
         
         #The absolute note index Must always be a multiple of the notes_per_led, i.e. it must be rounded when the resolution is changed
         #self.absolute_note_index=
+        
+    async def status_led_off(self):
+        self.leds.status_pix[0]=(0,0,0)#the status LED is grb
+        await self.leds.write(3)
         
     
     def schedule_update(self,str_to_update):
@@ -478,7 +484,7 @@ class Mic():
 
             mask = self.binned_fft_calc != 0 #set to 0 if some conditions are met in the fft_and_bin
             self.db_scaling[mask] = 20 * np.log10(self.binned_fft_calc[mask] / V_ref)
-            self.db_scaling[~mask] = self.lowest_db                  
+            self.db_scaling[~mask] = self.low_db_set_point                  
 #             print(self.db_scaling)
             
 #             tfft3=ticks_ms()
@@ -486,7 +492,7 @@ class Mic():
             
             # FFTscaling only the fft_mags_array, when quiet, the maximum ambient noise dynamically becomes bright, which is distracting.
             # We need to make noise an ambient low level of intensity
-            brightness_range=np.array([0,255]) 
+             
             
 #             print(f"after scaling to db range: {gc.mem_free()}")
             
@@ -495,6 +501,7 @@ class Mic():
             if self.last_loudest_reading>self.highest_db_on_record:
 #                 self.highest_db_on_record=0.8*self.highest_db_on_record+0.2*max(db_scaling)
                 self.highest_db_on_record=self.last_loudest_reading
+                
                 print("highest db recorded: ",self.highest_db_on_record)
 #                 print("loud: raising db top. db: ", self.highest_db_on_record)
                 time_of_ceiling_raise=ticks_ms()
@@ -511,6 +518,7 @@ class Mic():
 
                 elif ticks_diff(ticks_ms(),time_of_ceiling_raise)>3000: #hardcoded delay on the AGC
                     self.highest_db_on_record=0.9*self.highest_db_on_record+0.1*self.max_db_set_point
+                    
                     time_since_last_update=ticks_diff(ticks_ms(),spam_reduction_time)
                     if time_since_last_update>500:#reduce the number of spam checks
                         spam_reduction_time=ticks_ms()
@@ -518,8 +526,12 @@ class Mic():
             
 #             print(f"after setting db range: {gc.mem_free()}")
             
+            #make sure to rescale the upper end of the db array that informs the colour map range in the below interp function
+            self.scale_and_clip_db_range[1]=max(self.max_db_set_point,self.highest_db_on_record)
+            
             #scale to 0-255 range, can/should scale up for more hue resolution
-            self.fft_mags_array = np.interp(self.db_scaling, self.summed_magnitude_range, brightness_range)
+            #
+            self.fft_mags_array = np.interp(self.db_scaling, self.scale_and_clip_db_range, self.colour_index_range)
 #             print("FFT_mags_array: ", self.fft_mags_array)
             
 #             print(f"after scaling fft to db range: {gc.mem_free()}")
@@ -532,7 +544,7 @@ class Mic():
             tint1=ticks_ms()
             if self.mode=="intensity":
                 for i in range(len(self.fft_mags_array)):
-                    if self.db_scaling[i]>self.lowest_db:
+                    if self.db_scaling[i]>self.low_db_set_point:
                         if self.brightness_sub_mode=='flat':
                             self.scaled_hues[i]=(
                                 (self.intensity_lut[round(self.fft_mags_array[i])][0]*self.brightness)//255,
@@ -589,7 +601,7 @@ class Mic():
 #                 print("new frame")
                 for i in range(len(self.dominant_tones)):
                     
-                    if self.db_scaling[i]<self.lowest_db:
+                    if self.db_scaling[i]<self.low_db_set_point:
                         self.scaled_hues[i]=(0,0,0)
 #                         print(0)
                     else:
@@ -652,14 +664,14 @@ class Mic():
             
             tmenu1=ticks_ms()
             if self.menu_init==True: #annoying to have a single use line but this is a quick fix.                                
-                #init the status pix or it will keep the last menu state
+                #init the status pix or it will keep the last power-off menu state
                 leds.status_pix[0]=(0,20,0)#the status LED is grb
                 await leds.write(3)
                 self.menu_init=False
             
             if self.show_menu_in_mic == True:
                 if self.menu_thing_updating=="brightness" and self.menu_update_required==True:                       
-                    
+                    self.status_led_off=False
                     
                     #print("brightness in mic: ",self.brightness)
                     
@@ -693,6 +705,8 @@ class Mic():
                     
                 if self.menu_thing_updating=="resolution" and self.menu_update_required==True:
                     if self.resolution_sub_mode=="notes_per_pix" and self.menu_update_required==True:
+                        self.status_led_off=False
+                        
                         #update onboard LED/mini-menu
                         leds.status_pix[0]=(5,30,0)#the status LED is grb
                         await leds.write(3)
@@ -719,6 +733,8 @@ class Mic():
                         self.menu_update_required=False
                         
                     if self.resolution_sub_mode=="panning" and self.menu_update_required==True:
+                        self.status_led_off=False
+                        
                         #update onboard LED/mini-menu
                         leds.status_pix[0]=(0,0,20)#the status LED is grb, blue is distinct, the purple turns to red through the flex.
                         await leds.write(3)
@@ -742,38 +758,40 @@ class Mic():
                     
                     
                 if self.menu_thing_updating=="highest_db" and self.menu_update_required==True:
+                    self.status_led_off=False
+                    
                     #update onboard LED/mini-menu
                     leds.status_pix[0]=(20,0,0)#the status LED is grb
                     await leds.write(3)
                     
                     #print("loudest reading: ", loudest_reading)
                     db_per_bin=-10 #-120 to 0 decibels makes a nice 10 decible scale bar
-                    #for loop looks odd, because again it's decibels, and because I flipped it to be left to right
-                    for i in range(12,0,-1):
+                    #for loop looks odd, because again it's decibels, and because I flipped it to be left to right. -1 to ensure 0 index is included
+                    for i in range(11,-1,-1):
                         #conditions will look odd here because the values to work with are in decibels, which are -ve
                         if i*db_per_bin <= self.last_loudest_reading:
                             #draw loudest measured decibel signal, from -120 to 0
-                            await leds.show_hsv(2,i-1,self.octave_shift_hue,255,int(self.brightness*0.5))#annoying indicies, minus one is to line up with pixels  
+                            await leds.show_hsv(2,i,self.octave_shift_hue,255,int(self.brightness*0.5))#annoying indicies, minus one is to line up with pixels  
                         else:    
                             #blank out leds
-                            await leds.show_hsv(2,i-1,0,0,0)  
+                            await leds.show_hsv(2,i,0,0,0)  
                     
                         #draw level top first, so that it does not overide the highest db pixel indicator, in the case the highest value is greater than the high db but less than the next pixel
                         if (self.highest_db_on_record>self.max_db_set_point):
 #                             if (i*db_per_bin <= loudest_reading < (i-1)*db_per_bin):
 #                                 await leds.show_hsv(2,i-1,5000,255,int(self.brightness))
                             if (i*db_per_bin <= self.highest_db_on_record < (i-1)*db_per_bin):
-                                await leds.show_hsv(2,i-1,5000,255,int(self.brightness*0.5))
+                                await leds.show_hsv(2,i,5000,255,int(self.brightness*0.5))
                         
                         #draw lowest db setting if in intensity mode
-                        if i*db_per_bin==self.lowest_db: #and self.auto_low_control==False:
+                        if i*db_per_bin==self.low_db_set_point: #and self.auto_low_control==False:
                             if self.db_selection=='min_db_set':
-                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness*0.5))#green is bright as
+                                await leds.show_hsv(2,i,20000,255,int(self.brightness*0.5))#green is bright as
                             else:
-                                await leds.show_hsv(2,i-1,0,255,int(self.brightness*0.5))                                
+                                await leds.show_hsv(2,i,0,255,int(self.brightness*0.5))                                
                                 
 #                         #draw lowest db setting, auto scaled, if in synesthesia mode
-#                         if i*db_per_bin==self.lowest_db and self.auto_low_control==True:
+#                         if i*db_per_bin==self.low_db_set_point and self.auto_low_control==True:
 #                             if self.db_selection=='min_db_set':
 #                                 await leds.show_hsv(2,i-1,20000,255,int(self.brightness*0.5))#green is bright as
 #                             else:
@@ -782,23 +800,29 @@ class Mic():
                         #draw highest db setting
                         if i*db_per_bin==self.max_db_set_point:
                             if self.db_selection=='max_db_set':
-                                await leds.show_hsv(2,i-1,20000,255,int(self.brightness*0.5))#green is  bright as
+                                await leds.show_hsv(2,i,20000,255,int(self.brightness*0.5))#green is  bright as
                             else:
-                                await leds.show_hsv(2,i-1,0,255,int(self.brightness*0.5))
-                    #draw update the menu?
+                                await leds.show_hsv(2,i,0,255,int(self.brightness*0.5))
+                                
+            if self.status_led_off==True:
+                #update onboard LED/mini-menu
+                leds.status_pix[0]=(0,0,0)#the status LED is grb
+                await leds.write(3)
+                            
+                #draw update the menu?
 #                     await leds.write(2)
-                        
+                    
                     
                     #This determines if the menue keep updating or is a one and done?
 #                     self.menu_update_required=False
                     
-                if self.menu_thing_updating=="hue_select" and self.menu_update_required==True:
-                    #update onboard LED/mini-menu
-                    leds.status_pix[0]=(0,0,20)#the status LED is grb
-                    await leds.write(3)
-                    
-                    for i in range(0,12):
-                        await leds.show_hsv(2,i,0,0,0)
+#                 if self.menu_thing_updating=="hue_select" and self.menu_update_required==True:
+#                     #update onboard LED/mini-menu
+#                     leds.status_pix[0]=(0,0,20)#the status LED is grb
+#                     await leds.write(3)
+#                     
+#                     for i in range(0,12):
+#                         await leds.show_hsv(2,i,0,0,0)
                         
             tmenu2=ticks_ms()
             total_ms=ticks_diff(tmenu2,t_awaiting)
