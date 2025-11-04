@@ -14,7 +14,7 @@ def set_all_leds(color):
     np.write()
 
 while True:
-    set_all_leds((55, 0, 0))  # Set all LEDs to red (R, G, B)
+    set_all_leds((0, 55, 0))  # Set all LEDs to red (R, G, B)
     sleep(1)
     set_all_leds((0, 0, 0))    # Turn off all LEDs
     sleep(1)

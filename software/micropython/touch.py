@@ -12,16 +12,20 @@ class Touch:
     thresh = (80 << 8) // 100   # 80%
     debounce_ms = 50
 
-    def __init__(self, pin):
+    def __init__(self, watchdog, pin):
+        self.watchdog=watchdog
+        
         self.state = False
         self.rv = 0
         self._maxrawval = 0
         
-        self.no_touch=70000
+        self.pin=pin
+        
+        self.no_touch=80000
         self.no_touch_noise=40000
         self.hard_coded_no_touch=self.no_touch
         self.no_touch_noises=[]
-        self.one_touch=80000
+        self.one_touch=90000
         self.hard_coded_touch=self.one_touch
         self.one_touch_noise=40000
         self.no_touch_noises=[]
@@ -38,6 +42,8 @@ class Touch:
         self.state = await self.rawstate()  # Initial state
 
         while True:
+            self.watchdog.heartbeat(f'Touch{self.pin}')
+            
             await self.rawstate()
 #             await self._check(await self.rawstate())
             # Ignore state changes until switch has settled. Also avoid hogging CPU.

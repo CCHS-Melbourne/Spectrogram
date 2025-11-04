@@ -4,7 +4,7 @@ from neopixel import NeoPixel
 from machine import Pin
 from time import ticks_us, ticks_diff
 
-NUM_LEDS = 13 #50 #ugly work around for array out of bound error caused by ring buffer in mic.py
+NUM_LEDS = 13 #50 #actually needs to be number of leds+1# ugly work around for array out of bound error caused by ring buffer in mic.py
 DEV_STATUS_LED_PIN=21
 LEDS_PIN0 = 6
 LEDS_PIN1 = 8
@@ -41,6 +41,10 @@ class Leds():
     async def dance(self):
         await self.blink()
 
+    async def show_rgb(self, led_arr_num, led_nr, rgb):
+        self.led_list[led_arr_num][led_nr] = rgb
+
+    
     async def show_hsv(self, led_arr_num, led_nr, hue, sat, val):
         #show_hsv time to pixel:  3068 µs
         t0 = ticks_us()
@@ -52,6 +56,7 @@ class Leds():
     
     async def write(self, led_arr_num):
         self.led_list[led_arr_num].write()
+
     
     #apparently not smooth
     async def fade_rgb(self, led_arr_num, led_nr, target_hue, steps=30):

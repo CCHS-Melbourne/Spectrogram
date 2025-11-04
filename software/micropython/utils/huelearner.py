@@ -21,7 +21,9 @@ class Hue_Learner:
             
             for j in range(0,3):#for each LED strip
                 for i in range(0,self.num_leds):#for each LED on the strip
-                    #0-65535 (16bit)    
+                    #0-65535 (16bit)
+                    #(index1,index2,hue,sat.brightness)
+                    
                     await self.leds.show_hsv(j,i,int((self.base_hue+self.hue_delta*i)+(j*self.num_leds*self.hue_delta))%65535,255,5)#j+1 because otherwise the first row would be all one colour
                 await self.leds.write(j)
                 await asyncio.sleep_ms(0)  # Yield to other tasks
