@@ -97,12 +97,18 @@ class Menu:
 #             print('Brightness step: ',brightness_step)
             
             if direction=="+":
+                self.mic.show_menu_in_mic=True
+                self.mic.menu_update_required=True
+                
                 if self.mic.brightness_index<len(self.mic.brightnesses)-1:
                     self.mic.brightness_index+=1
                 self.mic.brightness=self.mic.brightnesses[self.mic.brightness_index]
                 self.mic.menu_update_required=True
 
             if direction=="-":
+                self.mic.show_menu_in_mic=True
+                self.mic.menu_update_required=True
+                
                 if self.mic.brightness_index>=1:
                     self.mic.brightness_index-=1
                 self.mic.brightness=self.mic.brightnesses[self.mic.brightness_index]
