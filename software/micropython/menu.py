@@ -161,6 +161,9 @@ class Menu:
             
             elif self.mic.resolution_sub_mode=="panning":            
                 if direction=="+":
+                    self.mic.show_menu_in_mic=True
+                    self.mic.menu_update_required=True
+                    
                     self.mic.start_range_index+=1
                     self.mic.absolute_note_index=self.mic.start_range_index*self.mic.notes_per_led
                     print("absolute_note: ",self.mic.absolute_note_index)
@@ -172,6 +175,9 @@ class Menu:
                     self.mic.menu_update_required=True
 
                 elif direction=="-":
+                    self.mic.show_menu_in_mic=True
+                    self.mic.menu_update_required=True
+                    
                     if self.mic.start_range_index>=1:
                         self.mic.start_range_index-=1
                         self.mic.absolute_note_index-=self.mic.notes_per_led                

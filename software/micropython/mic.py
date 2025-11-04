@@ -599,14 +599,18 @@ class Mic():
 #                 scaled_hues=tuple(((r*brightness)//255,(g*brightness)//255,(b*brightness)//255) for (r,g,b),brightness in zip(dominants_hues,fft_mags_int_list))
 # #                 print("scaled_hues: ",scaled_hues)
 #                 print("new frame")
+#                 print(self.dominant_tones)
                 for i in range(len(self.dominant_tones)):
                     
                     if self.db_scaling[i]<self.low_db_set_point:
                         self.scaled_hues[i]=(0,0,0)
 #                         print(0)
                     else:
-                        self.dominant_notes_rep[i]=12.*np.log2(self.dominant_tones[i]/440.)+49.
-                        note=round(self.dominant_notes_rep[i]-1)%12 #the -1 is to go from notes starting at 1 for A0 to starting at 0 for the hue index
+                        if self.dominant_tones[i]>0: #the menu pan sets 'outside of range' pixels to -1
+                            self.dominant_notes_rep[i]=12.*np.log2(self.dominant_tones[i]/440.)+49.
+                            note=round(self.dominant_notes_rep[i]-1)%12 #the -1 is to go from notes starting at 1 for A0 to starting at 0 for the hue index
+                        else:
+                            note=0
                         
                         #this works to present 'flat' notes: no scaling of brightness with the intensity of the note
                         if self.brightness_sub_mode=='flat':
