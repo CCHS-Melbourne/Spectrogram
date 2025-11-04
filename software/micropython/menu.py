@@ -206,6 +206,7 @@ class Menu:
             
             if direction=="+":
                 #tell the menu that an update is required, needed or it will draw every frame.
+                self.mic.show_menu_in_mic=True
                 self.mic.menu_update_required=True
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
@@ -229,6 +230,7 @@ class Menu:
                 
             if direction=="-":
                 #tell the menu that an update is required, needed or it will draw every frame.
+                self.mic.show_menu_in_mic=True
                 self.mic.menu_update_required=True
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
@@ -252,6 +254,7 @@ class Menu:
             
             elif direction=="u":
                 #tell the menu that an update is required, needed or it will draw every frame.
+                self.mic.show_menu_in_mic=True
                 self.mic.menu_update_required=True
                 #set the menu update required by the mic LED updater
                 self.mic.menu_thing_updating="highest_db"
