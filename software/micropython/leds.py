@@ -1,25 +1,20 @@
+import config
 import asyncio
 from random import randint
 from neopixel import NeoPixel
 from machine import Pin
 from time import ticks_us, ticks_diff
 
-NUM_LEDS = 13 #50 #actually needs to be number of leds+1# ugly work around for array out of bound error caused by ring buffer in mic.py
-DEV_STATUS_LED_PIN=21
-LEDS_PIN0 = 6
-LEDS_PIN1 = 8
-LEDS_PIN2 = 7
-
 class Leds():
     def __init__(self):
-        gpioS = Pin(DEV_STATUS_LED_PIN, Pin.OUT)
-        gpio0 = Pin(LEDS_PIN0, Pin.OUT)
-        gpio1 = Pin(LEDS_PIN1, Pin.OUT)
-        gpio2 = Pin(LEDS_PIN2, Pin.OUT)
+        gpioS = Pin(config.DEV_STATUS_LED_PIN, Pin.OUT)
+        gpio0 = Pin(config.LEDS_PIN0, Pin.OUT)
+        gpio1 = Pin(config.LEDS_PIN1, Pin.OUT)
+        gpio2 = Pin(config.LEDS_PIN2, Pin.OUT)
         self.status_pix = NeoPixel(gpioS, 1, )
-        self.neopix0 = NeoPixel(gpio0, NUM_LEDS)
-        self.neopix1 = NeoPixel(gpio1, NUM_LEDS)
-        self.neopix2 = NeoPixel(gpio2, NUM_LEDS)
+        self.neopix0 = NeoPixel(gpio0, config.NUM_LEDS)
+        self.neopix1 = NeoPixel(gpio1, config.NUM_LEDS)
+        self.neopix2 = NeoPixel(gpio2, config.NUM_LEDS)
         self.led_list=[self.neopix0,self.neopix1,self.neopix2,self.status_pix]
 
     def __iter__(self):
@@ -56,7 +51,9 @@ class Leds():
     
     async def write(self, led_arr_num):
         self.led_list[led_arr_num].write()
-
+    
+    async def fill(self, led_arr_num, colour):
+        self.led_list[led_arr_num].fill((colour))
     
     #apparently not smooth
     async def fade_rgb(self, led_arr_num, led_nr, target_hue, steps=30):

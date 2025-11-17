@@ -1,6 +1,7 @@
 # Inspired by: https://github.com/peterhinch/micropython-async/blob/master/v3/primitives/pushbutton.py
 import time
 import asyncio
+import config
 
 try:
     from machine import TouchPad
@@ -21,14 +22,14 @@ class Touch:
         
         self.pin=pin
         
-        self.no_touch=80000
-        self.no_touch_noise=40000
+        self.no_touch=config.UNPRESSED_CAPACITIVE_READING
+#         self.no_touch_noise=40000
         self.hard_coded_no_touch=self.no_touch
-        self.no_touch_noises=[]
-        self.one_touch=90000
+#         self.no_touch_noises=[]
+        self.one_touch=config.PRESSED_CAPACITIVE_READING
         self.hard_coded_touch=self.one_touch
-        self.one_touch_noise=40000
-        self.no_touch_noises=[]
+#         self.one_touch_noise=40000
+#         self.no_touch_noises=[]
         
         try:
             print("Initialising touch sensor")

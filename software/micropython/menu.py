@@ -1,4 +1,5 @@
 import asyncio
+import config
 from time import ticks_ms, ticks_diff
 
 #there's a lot of janky double handling in this, but I'd have to rip it apart to fix up.
@@ -219,19 +220,19 @@ class Menu:
                 
                 if self.mic.db_selection=='max_db_set':
                     #control the movement of the pixel indicating the top of the colourmapping range
-                    if self.mic.max_db_set_point<=-10:
-                        self.mic.max_db_set_point+=10
+                    if self.mic.max_db_set_point<=-config.DB_STEP_SIZE: #if the max_db is one step below 0db,
+                        self.mic.max_db_set_point+=config.DB_STEP_SIZE #increment according to step_size
                         print("increased max db range to: ", self.mic.max_db_set_point)
                     elif self.mic.max_db_set_point>0:
                         print("can't increase maxDB, if this is a concern to your visualization quest, you need to get hearing protection")
                 else:
                     #control the position of the pixel indicating the bottom of the colourmapping range
-                    if self.mic.low_db_set_point<=self.mic.max_db_set_point-20:
-                        self.mic.low_db_set_point+=10
+                    if self.mic.low_db_set_point<=self.mic.max_db_set_point-2*config.DB_COARSE_STEP_SIZE: #if the min_db is two bins below the max_db
+                        self.mic.low_db_set_point+=config.DB_STEP_SIZE #increment to one bin below the max_db 
                         print("increased min db range to: ", self.mic.low_db_set_point)
                     #make sure the min db value cant get too near to the max db value
-                    elif self.mic.low_db_set_point>self.mic.max_db_set_point-20:
-                        print("can't increase/raise to the lowest db, you'll lose all resolution")
+                    elif self.mic.low_db_set_point>self.mic.max_db_set_point-2*config.DB_COARSE_STEP_SIZE:
+                        print("can't increase/raise to the lowest db, you'll lose all resolution or overlap pixels")
                 
                 
             if direction=="-":
@@ -243,18 +244,18 @@ class Menu:
                 
                 if self.mic.db_selection=='max_db_set':
                     #control the movement of the pixel indicating the top of the colourmapping range
-                    if self.mic.max_db_set_point>=self.mic.low_db_set_point+20:
-                        self.mic.max_db_set_point-=10
+                    if self.mic.max_db_set_point>=self.mic.low_db_set_point+2*config.DB_COARSE_STEP_SIZE: #if the min_db is two bins below the mibn_db
+                        self.mic.max_db_set_point-=config.DB_STEP_SIZE
                         print("decreased max db range to: ", self.mic.max_db_set_point)
-                    elif self.mic.max_db_set_point<self.mic.low_db_set_point+20:
-                        print("can't decrease below/near to the lowest db, won't decrease range further, you'll lose all resolution")
+                    elif self.mic.max_db_set_point<self.mic.low_db_set_point+2*config.DB_COARSE_STEP_SIZE:
+                        print("can't decrease below/near to the lowest db, won't decrease range further, you'll lose all resolution or overlap pixels")
                 else:
                     #control the position of the pixel indicating the bottom of the colourmapping range
-                    if self.mic.low_db_set_point>=-100:
-                        self.mic.low_db_set_point-=10
+                    if self.mic.low_db_set_point>=-120+config.DB_STEP_SIZE:
+                        self.mic.low_db_set_point-=config.DB_STEP_SIZE
                         print("decreased min db range to: ", self.mic.low_db_set_point)
                     #make sure the min db value cant get too near to the max db value
-                    elif self.mic.low_db_set_point<-110:
+                    elif self.mic.low_db_set_point<-120:
                         print("can't lower any further, you'll lose sight of the pixel. If you can hear down here, you must get overstimulated very easily.")                    
             
             
@@ -424,7 +425,8 @@ class Menu:
             for index,touch in enumerate(self.touches):                    
                 self.states[index]=touch.state
                 self.rvs[index]=touch.rv
-#                 print("rv0", self.rvs[0], "rv1", self.rvs[1], "rv2", self.rvs[2])
+            if config.PRINT_TOUCH_READING==True:
+                print("rv0", self.rvs[0], "rv1", self.rvs[1], "rv2", self.rvs[2])
                 
 #             print(self.states)
 #             print("rv0", self.rvs[0], "rv1", self.rvs[1], "rv2", self.rvs[2])
