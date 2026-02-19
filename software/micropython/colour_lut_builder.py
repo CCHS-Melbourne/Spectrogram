@@ -47,5 +47,7 @@ def generalised_color_lut(color_list, color_stop_positions, range_top_value, ste
 #                 print('next colour transition/stop range')
                 start_val=i
                 break #break out so the start_val isn't continuously updated as the loops runs out normally
-#             
+        
+#     print(lut)
+    
     return lut

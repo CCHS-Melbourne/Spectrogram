@@ -68,7 +68,8 @@ class Mic():
                                 bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
                                 ibuf=I2S_SAMPLE_BYTES)
 
-        self.mode="intensity"
+        self.mode="determiner"
+#         self.mode="intensity"
         
         self.status_led_off=False
         self.show_menu_in_mic=False
@@ -84,6 +85,9 @@ class Mic():
         self.db_selection="max_db_set"
         self.last_loudest_reading=-80
         self.auto_low_control=False
+        
+        # Figure out what tones correspond to what magnitudes out of the fft, with respect to the mic sampling parameters
+        self.tones=FREQUENCY_RESOLUTION*np.arange(SAMPLE_COUNT/2)
         
         #determines the values that are actually accounted for in display colour scaling
         self.scale_and_clip_db_range=np.array([self.low_db_set_point, self.highest_db_on_record]) #for colouring: values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
@@ -103,7 +107,7 @@ class Mic():
         self.resolution_sub_mode='notes_per_pix'
         
         #intializing varables here is fine, but their handling and setting should be in the menu.
-        self.brightness_sub_mode='flat'
+        self.brightness_sub_mode='scaling'
         self.flat_hue=0
         self.scaling_hue=10000
         
@@ -156,6 +160,18 @@ class Mic():
             self.fft_ranges_buffer_a=JSON_boot[self.start_range_index:config.NUM_LEDS]
             self.fft_ranges_buffer_b=JSON_boot[self.start_range_index:config.NUM_LEDS]
 #             print("FFT_ranges: ", self.fft_ranges_buffer_a)
+        
+            #retrive and store the bins for each individual note for use in chroma key generation, trim out start to get to 'a' [28,29], see FFT spreadsheet
+            A55Hz_index=12 #determined by fft parameters
+            self.indiv_note_bins=self.precomputed_borders.get('1')[A55Hz_index:]
+            print("Start_bin indexes:", self.indiv_note_bins[0]) #must line up with note A for chromatic aggretation to assign tone intensity values to correct notes
+            print("Tone corresponding to first index in that bin.", self.tones[self.indiv_note_bins[0][0]])
+            
+        
+        self.chroma_key=np.zeros(12)
+        self.chroma_decay=0.98
+        #self.masks={'Ionian':[1,0,1,0,1,1,0,1,0,1,0,1]}    
+        self.masks={'Ionian':[6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]} #Krumhansl's empirically derived weights #Sonnet 4.6    
 
         #load precomputed values and select the dictionary entry that corresponds to the current notes_per_led option
         #create two buffers to avoid async clashes
@@ -198,9 +214,6 @@ class Mic():
                                           [0,0,0,0,0,0,0,0,0,0,0,0],
                                           [0,0,0,0,0,0,0,0,0,0,0,0]]
         
-        # Figure out what tones correspond to what magnitudes out of the fft, with respect to the mic sampling parameters
-        self.tones=FREQUENCY_RESOLUTION*np.arange(SAMPLE_COUNT/2)
-        
         self.intensity_hues=[(0,0,0)]*12
         #replace masks and HSV calcs with LUT
 #         self.intensity_lut = create_color_lut()
@@ -211,7 +224,12 @@ class Mic():
         
         #set hues for synesthesia mode based on notes picked in RGB in LED_note_hue_picker, translate to HSV values
         self.note_hues=config.SYN_NOTE_HUES
-        
+       
+       
+       
+       
+       
+       
         
     
     async def relocate_start_range_index(self):
@@ -224,11 +242,23 @@ class Mic():
         
         #The absolute note index Must always be a multiple of the notes_per_led, i.e. it must be rounded when the resolution is changed
         #self.absolute_note_index=
-    
+
+
+
+
+
+
+
     def schedule_update(self,str_to_update):
         #queue update
         self.next_data_key=str_to_update
         self.update_queued=True
+
+
+
+
+
+
 
     async def process_update(self):
         if self.update_queued and self.next_data_key:
@@ -298,6 +328,11 @@ class Mic():
 #             await uasyncio.sleep_ms(0)  # Yield to other tasks
             
 
+
+
+
+
+
     async def fft_and_bin(self, samples):
         #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)#, log=True) #scratchpad worsens overall performance.
         
@@ -314,48 +349,77 @@ class Mic():
         
         slice_sums=[]
 #         print(self.fft_ranges_to_operate_with)
-        #ranges_to_operate_with is a buffer containing precomputed boundaries for the notes_per_pixel bins of interest, the buffer is updated with menuing.
-        for index, f in enumerate(self.fft_ranges_to_operate_with):
-#             print(self.fft_ranges_to_operate_with)
-            if f[0]>=0: #check if the bin has not been errored out with -1, e.g.: if the menu or bins are shorter than the display.
-                 
-                #total energy of sound is more important than an average. Not sure what this will do to my log conversion.
-                slice_sum = np.sum(magnitudes[f[0]:f[1]])
-                slice_sums.append(slice_sum)
-                slice_index_diff = f[1]-f[0]
-                try:
-                    normalized_sum = slice_sum/slice_index_diff
-                    ###This sort of thing is needed for microtone representation.
-                    ## Find out where the max magnitude in the slice is, then add the starting index of the slice,
-                    ## or you'll get veeeery odd frequency curves.
-                    where_dominant_mag=np.argmax(magnitudes[f[0]:f[1]])+f[0] 
-                    dominant_mag=magnitudes[where_dominant_mag]
-                    dominant_tone=self.tones[where_dominant_mag]
-                    
-                # Crops up if the number of notes in a bin is too few.
-                # As in low note_per_bin cases.
-                except Exception as e:
-                    print("Exception: ",e)
-                    #set the output to be the first value in the bin, always the first index, in this case
-                    #creates an output with padded zeros.
-                    display_value=0
-                    #set the dominant mag to be the first closes_tone to a 'real note's magnitude in the array slice, if they are all lower than the noise threshold.
-                    dominant_mag = 0
-                    #this should be the first closest /tone/ not the first halfway frequency
-                    dominant_tone = 0
-#                     dominant_note_rep = 0
-                    
-
-            else:
-#                 print("bin errored out with -1")
-                normalized_sum=0 #can't set these to -1 because they go through a log filter
-                dominant_mag=0
-                dominant_tone=0
-                dominant_note_rep=0
+        
+        t_chroma0=ticks_ms()
+        if self.mode=="determiner":
+#             print("building chromakey")
+            for index, note in enumerate(self.indiv_note_bins):
+                #hardcoded wrap around for 12 notes in western music
+                #don't need to db scale this, just need raw amp?
+                hardcoded_scale=1
+                _filter=0.9
+                #add new signal from fft for each bin
+                self.chroma_key[index%12] = _filter*(self.chroma_key[index%12]*self.chroma_decay) + (1-_filter)*(np.max(magnitudes[note[0]:note[1]])/hardcoded_scale)
+            
+#                 self.db_scaling[mask] = 20 * np.log10(self.binned_fft_calc[mask] / V_ref)
+#                 self.db_scaling[~mask] = self.low_db_set_point  
+            
+#             print("chromakey:",self.chroma_key)
+            t_chroma1=ticks_ms()
+#             print("ticks_chroma:",ticks_diff(t_chroma1,t_chroma0))
+            
+        
+        
+        if self.mode=="intensity" or self.mode=="synesthesia":
                 
+            #ranges_to_operate_with is a buffer containing precomputed boundaries for the notes_per_pixel bins of interest, the buffer is updated with menuing.
+            for index, f in enumerate(self.fft_ranges_to_operate_with):
+    #             print(self.fft_ranges_to_operate_with)
+                if f[0]>=0: #check if the bin has not been errored out with -1, e.g.: if the menu or bins are shorter than the display.
+                     
+                    #total energy of sound is more important than an average. Not sure what this will do to my log conversion.
+                    slice_sum = np.sum(magnitudes[f[0]:f[1]])
+                    slice_sums.append(slice_sum)
+                    slice_index_diff = f[1]-f[0]
+                    try:
+                        normalized_sum = slice_sum/slice_index_diff
+                        ###This sort of thing is needed for microtone representation.
+                        ## Find out where the max magnitude in the slice is, then add the starting index of the slice,
+                        ## or you'll get veeeery odd frequency curves.
+                        where_dominant_mag=np.argmax(magnitudes[f[0]:f[1]])+f[0] 
+                        dominant_mag=magnitudes[where_dominant_mag]
+                        dominant_tone=self.tones[where_dominant_mag]
+                        
+                    # Crops up if the number of notes in a bin is too few.
+                    # As in low note_per_bin cases.
+                    except Exception as e:
+                        print("Exception: ",e)
+                        #set the output to be the first value in the bin, always the first index, in this case
+                        #creates an output with padded zeros.
+                        display_value=0
+                        #set the dominant mag to be the first closes_tone to a 'real note's magnitude in the array slice, if they are all lower than the noise threshold.
+                        dominant_mag = 0
+                        #this should be the first closest /tone/ not the first halfway frequency
+                        dominant_tone = 0
+    #                     dominant_note_rep = 0
+                        
 
-            self.binned_fft_calc[index]=dominant_mag
-            self.dominant_tones[index]=dominant_tone
+                else:
+    #                 print("bin errored out with -1")
+                    normalized_sum=0 #can't set these to -1 because they go through a log filter
+                    dominant_mag=0
+                    dominant_tone=0
+                    dominant_note_rep=0
+                
+                              
+
+                self.binned_fft_calc[index]=dominant_mag
+                self.dominant_tones[index]=dominant_tone
+                
+                mask = self.binned_fft_calc != 0 #set to 0 if some conditions are met in the fft_and_bin
+                self.db_scaling[mask] = 20 * np.log10(self.binned_fft_calc[mask] / V_ref)
+                self.db_scaling[~mask] = self.low_db_set_point                  
+#             print(self.db_scaling)
 #             self.dominant_notes_rep[index]=dominant_note_rep 
 #         print(slice_sums)
 #         print("binned_fft_calc:",self.binned_fft_calc)
@@ -367,6 +431,11 @@ class Mic():
 #         print(f"after binning: {gc.mem_free()}")
         
         return
+
+
+
+
+
 
     async def start(self):
         leds = Leds()
@@ -426,11 +495,7 @@ class Mic():
             await self.fft_and_bin(samples)
             tfft2=ticks_ms()        
 
-            mask = self.binned_fft_calc != 0 #set to 0 if some conditions are met in the fft_and_bin
-            self.db_scaling[mask] = 20 * np.log10(self.binned_fft_calc[mask] / V_ref)
-            self.db_scaling[~mask] = self.low_db_set_point                  
-#             print(self.db_scaling)
-            
+
 #             tfft3=ticks_ms()
 #             print("FFT_testing_scratchpad: ", ticks_diff(tfft2, tfft1))
             
@@ -492,6 +557,48 @@ class Mic():
             tfft3=ticks_ms()
 #             print("FFT: ", ticks_diff(tfft2, tfft1)) #42-77     
             
+            
+            
+            
+            
+            #some code may repeat in here for the sake of cleaness. There are alot of print statements for debug
+            if self.mode=="determiner":
+                #score each possible set against the chromakey generated in the fft_and_bin
+                notes=['a','a#/bb','b','c','c#/db','d','d#/eb','e','f','f#/gb','g','g#/ab',]
+                root_position=[0,1,2,3,4,5,6,7,8,9,10,11]
+                scores=np.zeros(12)
+                mask=self.masks['Ionian']
+#                 print(mask)
+                for index,note in enumerate(notes):
+#                     print('Scoring: ', notes[index])
+                    #sonnet 4.6's idea
+#                     current_scale=['','','','','','','','','','','',''] #just making things explicate for checking
+                    for i in range(12):
+#                         if mask[i]==1: current_scale[i]=notes[(i + root_position[index]) % 12] 
+                        scores[index] += self.chroma_key[i] * mask[(i - root_position[index]) % 12]
+                
+                
+                #print to check how notes register/decay in chromakey
+                args = []
+                for note, key in zip(notes, list(self.chroma_key)):
+                    args += [note, key]
+                print(*args)
+                
+                #print to check how scores register/decay in Scores
+#                 args = []
+#                 for note, score in zip(notes, list(scores)):
+#                     args += [note, score]
+#                 print(*args)
+#                 print("best guess (major only for now):", notes[np.argmax(scores)])
+#                 print(scores)
+                pass
+            
+            
+            
+            
+            
+            
+            
             # Apply cosmetics to values calculated above
             tint1=ticks_ms()
             if self.mode=="intensity":
@@ -539,6 +646,12 @@ class Mic():
                 
             tint3=ticks_ms()
 #             print("Intensity: ", ticks_diff(tint2, tint1)) #9-10
+            
+            
+            
+            
+            
+            
             
             
             tsyn1 = ticks_ms()
@@ -605,6 +718,13 @@ class Mic():
 #             print("synesthesia: ", ticks_diff(tsyn2, tsyn1)) #11-13
             
 #             print(f"after colouring: {gc.mem_free()}")
+            
+            
+            
+            
+            
+            
+            
             
             tmenu1=ticks_ms()
             if self.menu_init==True: #annoying to have a single use line but this is a quick fix.                                
