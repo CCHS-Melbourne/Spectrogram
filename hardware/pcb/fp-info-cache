@@ -1,4 +1,109 @@
-24201505183505038
+24217630694417123
+Adafruit MAX31856
+1X09_ROUND_70
+
+
+0
+9
+9
+Adafruit MAX31856
+0805-NO
+
+
+0
+2
+2
+Adafruit MAX31856
+0805_10MGAP
+
+
+0
+2
+2
+Adafruit MAX31856
+ADAFRUIT_3.5MM
+
+
+0
+0
+0
+Adafruit MAX31856
+ADAFRUIT_TEXT_20MM
+
+
+0
+0
+0
+Adafruit MAX31856
+FIDUCIAL_1MM
+
+
+0
+1
+1
+Adafruit MAX31856
+MAX31856
+
+
+0
+13
+10
+Adafruit MAX31856
+MOUNTINGHOLE_2.5_PLATED
+
+
+0
+1
+1
+Adafruit MAX31856
+PCBFEAT-REV-040
+Revision Level Field - 40 mil{return}{return}Set version with global board attribute '>REV'
+
+0
+0
+0
+Adafruit MAX31856
+SOD-323
+SOD323 (2.5x1.2mm)
+
+0
+2
+2
+Adafruit MAX31856
+SOT23-5
+Small Outline Transistor - 5 Pin
+
+0
+5
+5
+Adafruit MAX31856
+SYMBOL_MINUS
+ICON{return}{return}Minus Symbol
+
+0
+0
+0
+Adafruit MAX31856
+SYMBOL_PLUS
+ICON{return}{return}Plus Sign Symbol
+
+0
+0
+0
+Adafruit MAX31856
+TERMBLOCK_1X2-3.5MM
+
+
+0
+2
+2
+Adafruit MAX31856
+TSSOP14
+Thin Shrink Small Outline Plastic 14
+
+0
+14
+14
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -56783,6 +56888,13 @@ One digit LED 7 segment SA39-11 SC39-11 SA39-12 SC39-12
 0
 10
 10
+Fans
+EE40100S2-1000U-999
+
+
+0
+0
+0
 Ferrite_THT
 LairdTech_28C0236-0JW-10
 Ferrite, vertical, LairdTech 28C0236-0JW-10, https://assets.lairdtech.com/home/brandworld/files/28C0236-0JW-10.pdf, JW Miller core https://www.bourns.com/products/magnetic-products/j.w.-miller-through-hole-ferrite-beads-emi-filters
@@ -89879,6 +89991,13 @@ rotary encoder illuminated switch vertical
 0
 9
 8
+SC1176 RPi zero 2 w
+MODULE_SC1176
+
+
+0
+40
+40
 Sensor
 ASAIR_AM2302_P2.54mm_Lead2.75mm_TabDown
 Temperature and humidity module, http://akizukidenshi.com/download/ds/aosong/AM2302.pdf
@@ -97964,59 +98083,3 @@ Varistor VF
 0
 2
 2
-Waveshare_ESP32_S3_mini
-Cap touch sensor
-
-
-0
-1
-1
-Waveshare_ESP32_S3_mini
-INMP441
-
-
-0
-6
-6
-Waveshare_ESP32_S3_mini
-LED strip ghost
-
-
-0
-3
-3
-Waveshare_ESP32_S3_mini
-Maker's mark
-
-
-0
-0
-0
-Waveshare_ESP32_S3_mini
-WS-ESP32-S3-Mini
-
-
-0
-18
-18
-Waveshare_ESP32_S3_mini
-eye
-
-
-0
-0
-0
-Waveshare_ESP32_S3_mini
-jumper
-
-
-0
-2
-2
-Waveshare_ESP32_S3_mini
-jumper pad
-
-
-0
-1
-1
