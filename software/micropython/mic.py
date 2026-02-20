@@ -53,6 +53,9 @@ scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of t
 
 magnitudes=np.zeros(SAMPLE_COUNT, dtype=np.float) #this is the result from the FFT
 
+#finally time for the Hann window, like a year and a half later:
+window = np.array([0.5 - 0.5 * np.cos(2 * np.pi * i / (SAMPLE_COUNT - 1)) for i in range(SAMPLE_COUNT)])
+
 V_ref=8388607 #this value is microphone dependant, for the DFROBOT mic, which is 24-bit I2S audio, that value is apparently 8,388,607 
 
 ID = 0 #I2S identity
@@ -162,15 +165,18 @@ class Mic():
 #             print("FFT_ranges: ", self.fft_ranges_buffer_a)
         
             #retrive and store the bins for each individual note for use in chroma key generation, trim out start to get to 'a' [28,29], see FFT spreadsheet
-            A55Hz_index=12 #determined by fft parameters
-            self.indiv_note_bins=self.precomputed_borders.get('1')[A55Hz_index:]
+            C65dot41Hz_index=15 #determined by fft parameters
+            self.indiv_note_bins=self.precomputed_borders.get('1')[C65dot41Hz_index:]
             print("Start_bin indexes:", self.indiv_note_bins[0]) #must line up with note A for chromatic aggretation to assign tone intensity values to correct notes
             print("Tone corresponding to first index in that bin.", self.tones[self.indiv_note_bins[0][0]])
             
         
         self.chroma_key=np.zeros(12)
-        self.chroma_decay=0.98
-        #self.masks={'Ionian':[1,0,1,0,1,1,0,1,0,1,0,1]}    
+        self.chroma_decay=0.9
+        self.aggregate_decay=0.95
+        self.aggregate_scores=np.zeros(12)
+        self.top_N_notes=4 
+#         self.masks={'Ionian':[1,0,1,0,1,1,0,1,0,1,0,1]}    
         self.masks={'Ionian':[6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]} #Krumhansl's empirically derived weights #Sonnet 4.6    
 
         #load precomputed values and select the dictionary entry that corresponds to the current notes_per_led option
@@ -338,8 +344,12 @@ class Mic():
         
         #This is the fft, speed determined by the size of the samples, which must be a length of a power of two.
         t_spectro_isolate_0=ticks_ms()
-
-        magnitudes=utils.spectrogram(samples)
+        
+        #apply Hann window
+        windowed_samples = samples * window
+        magnitudes = utils.spectrogram(windowed_samples)
+        
+#         magnitudes=utils.spectrogram(samples) #non windowed
         t_spectro_isolate_1=ticks_ms()
         
         #print("FFT_testing_isolated: ", ticks_diff(t_spectro_isolate_1, t_spectro_isolate_0))
@@ -353,17 +363,24 @@ class Mic():
         t_chroma0=ticks_ms()
         if self.mode=="determiner":
 #             print("building chromakey")
+            self.chroma_key*=self.chroma_decay
+            frame_chroma_key=np.zeros(12)
+            
             for index, note in enumerate(self.indiv_note_bins):
                 #hardcoded wrap around for 12 notes in western music
                 #don't need to db scale this, just need raw amp?
-                hardcoded_scale=1
-                _filter=0.9
+                hardcoded_scale=1000
                 #add new signal from fft for each bin
-                self.chroma_key[index%12] = _filter*(self.chroma_key[index%12]*self.chroma_decay) + (1-_filter)*(np.max(magnitudes[note[0]:note[1]])/hardcoded_scale)
+                frame_chroma_key[index%12] = (np.max(magnitudes[note[0]:note[1]])/hardcoded_scale) 
             
-#                 self.db_scaling[mask] = 20 * np.log10(self.binned_fft_calc[mask] / V_ref)
-#                 self.db_scaling[~mask] = self.low_db_set_point  
+            threshold=np.sort(frame_chroma_key)[-self.top_N_notes]
+            filtered_chroma_key=np.array([v if v>=threshold else 0.0 for v in frame_chroma_key])
             
+#             print("frame_key:", list(frame_chroma_key))
+#             print("sorted_key:", list(np.sort(frame_chroma_key)))
+#             print("filtered_key:", list(filtered_chroma_key))
+            
+            self.chroma_key+=filtered_chroma_key
 #             print("chromakey:",self.chroma_key)
             t_chroma1=ticks_ms()
 #             print("ticks_chroma:",ticks_diff(t_chroma1,t_chroma0))
@@ -560,13 +577,15 @@ class Mic():
             
             
             
-            
+            t_determiner0=ticks_ms()
             #some code may repeat in here for the sake of cleaness. There are alot of print statements for debug
+            
             if self.mode=="determiner":
-                #score each possible set against the chromakey generated in the fft_and_bin
-                notes=['a','a#/bb','b','c','c#/db','d','d#/eb','e','f','f#/gb','g','g#/ab',]
+                self.aggregate_scores*=self.aggregate_decay
+                #score each possible set against the chromakey generated in the fft_and_bin, rotate to have C first.
+                notes=['c','c#/db','d','d#/eb','e','f','f#/gb','g','g#/ab','a','a#/bb','b',]
                 root_position=[0,1,2,3,4,5,6,7,8,9,10,11]
-                scores=np.zeros(12)
+                frame_scores=np.zeros(12)
                 mask=self.masks['Ionian']
 #                 print(mask)
                 for index,note in enumerate(notes):
@@ -575,23 +594,35 @@ class Mic():
 #                     current_scale=['','','','','','','','','','','',''] #just making things explicate for checking
                     for i in range(12):
 #                         if mask[i]==1: current_scale[i]=notes[(i + root_position[index]) % 12] 
-                        scores[index] += self.chroma_key[i] * mask[(i - root_position[index]) % 12]
+                        frame_scores[index] += self.chroma_key[i] * mask[(i - root_position[index]) % 12]
                 
+                self.aggregate_scores+=frame_scores
                 
                 #print to check how notes register/decay in chromakey
-                args = []
-                for note, key in zip(notes, list(self.chroma_key)):
-                    args += [note, key]
-                print(*args)
+#                 args = []
+#                 for note, key in zip(notes, list(self.chroma_key)):
+#                     args += [note, key]
+#                 print(*args)
                 
                 #print to check how scores register/decay in Scores
 #                 args = []
-#                 for note, score in zip(notes, list(scores)):
+#                 for note, score in zip(notes, list(self.aggregate_scores)):
 #                     args += [note, score]
 #                 print(*args)
+                
+                args=[]
+                top3_indices = []
+                temp_scores=list(self.aggregate_scores)
+                for _ in range(3):
+                    best=np.argmax(temp_scores)
+                    top3_indices.append(best)
+                    temp_scores[best]=-1
+                for i in top3_indices:
+                    args+=[notes[i], self.aggregate_scores[i]]
+                print(*args)
 #                 print("best guess (major only for now):", notes[np.argmax(scores)])
 #                 print(scores)
-                pass
+            t_determiner1=ticks_ms()
             
             
             
@@ -951,7 +982,10 @@ class Mic():
 #                 leds.status_pix[0]=(50,50,50)#the status LED is grb
 #                 await leds.write(3)
             await asyncio.sleep_ms(wait_time) #yeild control. #this one line appears to have made the program substantially more responsive in the menu side of things.
-                
+              
+#             if self.mode=="determiner":
+#                 print("total (ms)", total_ms, "mic_sample",ticks_diff(t1,t0), "fft_and_bin: ", ticks_diff(tfft2, tfft1), "determiner: ", ticks_diff(t_determiner1, t_determiner0), "fps:", 1000//total_ms, "delay:", wait_time)
+              
 #             if self.mode=="Synesthesia":
 #                 print("total (ms)", total_ms, "mic_sample",ticks_diff(t1,t0), "fft_and_bin: ", ticks_diff(tfft2, tfft1), "synesthesia: ", ticks_diff(tsyn2, tsyn1), "fps:", 1000//total_ms, "delay:", wait_time)
 #             else:
