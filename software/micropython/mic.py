@@ -9,9 +9,7 @@ from leds import Leds
 from ulab import numpy as np
 from machine import Pin, I2S
 from time import ticks_ms, ticks_diff
-from utils.border_calculator import PrecomputedBorders
-from utils.nearest_tone_index_calculator import PrecomputedNearestTones
-from utils.nearest_tone_index_represents import PrecomputedToneRepresentations
+from utils.closest_tone_calculator import PrecomputedClosestTones
 from utils.menu_calculator import PrecomputedMenu
 
 # import gc
@@ -71,7 +69,7 @@ class Mic():
                                 bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
                                 ibuf=I2S_SAMPLE_BYTES)
 
-        self.mode="determiner"
+        self.mode="intensity"
 #         self.mode="intensity"
         
         self.status_led_off=False
@@ -155,19 +153,19 @@ class Mic():
             self.menu_buffer_a=JSON_menu[self.start_range_index:config.NUM_LEDS]
             self.menu_buffer_b=JSON_menu[self.start_range_index:config.NUM_LEDS]        
         
-        #load precomputed values and select the dictionary entry that corresponds to the current notes_per_led option
+        
+        #load the precomupted octave menu and select the dictionary entry that corresponds to the current notes_per_led option
         #create two buffers to avoid async clashes
-        self.precomputed_borders=PrecomputedBorders("utils/trying for better divisions between A and Asharp.json")
-        if self.precomputed_borders.load():
-            JSON_boot=self.precomputed_borders.get(str(self.notes_per_led))
-            self.fft_ranges_buffer_a=JSON_boot[self.start_range_index:config.NUM_LEDS]
-            self.fft_ranges_buffer_b=JSON_boot[self.start_range_index:config.NUM_LEDS]
-#             print("FFT_ranges: ", self.fft_ranges_buffer_a)
+        self.precomputed_closest_tones=PrecomputedClosestTones("utils/closest_tones.json")
+        if self.precomputed_closest_tones.load():
+            JSON_close_tones=self.precomputed_closest_tones.get(str(self.notes_per_led))
+            self.closest_tones_buffer_a=JSON_close_tones[self.start_range_index:config.NUM_LEDS]
+            self.closest_tones_buffer_b=JSON_close_tones[self.start_range_index:config.NUM_LEDS] 
         
             #retrive and store the bins for each individual note for use in chroma key generation, trim out start to get to 'a' [28,29], see FFT spreadsheet
             C65dot41Hz_index=15 #determined by fft parameters
-            self.indiv_note_bins=self.precomputed_borders.get('1')[C65dot41Hz_index:]
-            print("Start_bin indexes:", self.indiv_note_bins[0]) #must line up with note A for chromatic aggretation to assign tone intensity values to correct notes
+            self.indiv_note_bins=self.precomputed_closest_tones.get('1')[C65dot41Hz_index:]
+            print("Start_bin indexes:", self.indiv_note_bins) #must line up with note A for chromatic aggretation to assign tone intensity values to correct notes
             print("Tone corresponding to first index in that bin.", self.tones[self.indiv_note_bins[0][0]])
             
         
@@ -178,28 +176,12 @@ class Mic():
         self.top_N_notes=4 
 #         self.masks={'Ionian':[1,0,1,0,1,1,0,1,0,1,0,1]}    
         self.masks={'Ionian':[6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]} #Krumhansl's empirically derived weights #Sonnet 4.6    
+    
 
-        #load precomputed values and select the dictionary entry that corresponds to the current notes_per_led option
-        #create two buffers to avoid async clashes
-        self.precomputed_representation_map=PrecomputedToneRepresentations("utils/binned_indexes_represent_which_musical_tones.json")
-        if self.precomputed_representation_map.load():
-            JSON_boot=self.precomputed_representation_map.get(str(self.notes_per_led))
-            self.representations_map_buffer_a=JSON_boot[self.start_range_index:config.NUM_LEDS]
-            self.representations_map_buffer_b=JSON_boot[self.start_range_index:config.NUM_LEDS]
-            
-        #load precomputed values and select the dictionary entry that corresponds to the current notes_per_led option
-        #create two buffers to avoid async clashes
-        self.precomputed_closest_tone_indexes=PrecomputedNearestTones("utils/binned_indexes_of_tones_nearest_to_musical_notes.json")
-        if self.precomputed_closest_tone_indexes.load():
-            JSON_boot=self.precomputed_closest_tone_indexes.get(str(self.notes_per_led))
-            self.closest_tones_buffer_a=JSON_boot[self.start_range_index:config.NUM_LEDS]
-            self.closest_tones_buffer_b=JSON_boot[self.start_range_index:config.NUM_LEDS]
 
         #create buffer pointers
         self.active_buffer='a'
         self.menu_to_operate_with=self.menu_buffer_a
-        self.fft_ranges_to_operate_with=self.fft_ranges_buffer_a
-        self.representations_map_to_operate_with=self.representations_map_buffer_a
         self.closest_tone_indexes_to_operate_with=self.closest_tones_buffer_a
         
         #create update flags
@@ -274,41 +256,31 @@ class Mic():
             
             #update inactive buffers, reading the precomputed dictionary using the requested notes_per_LED 
             inactive_menu_buffer=self.precomputed_menus.get(self.next_data_key)
-            inactive_fft_buffer_json=self.precomputed_borders.get(self.next_data_key)
-            inactive_representation_buffer=self.precomputed_representation_map.get(self.next_data_key)
-            inactive_closest_tone_buffer=self.precomputed_closest_tone_indexes.get(self.next_data_key)
+            inactive_closest_tone_buffer=self.precomputed_closest_tones.get(self.next_data_key)
             
-            self.full_window_len=len(inactive_fft_buffer_json)
+            self.full_window_len=len(inactive_closest_tone_buffer)
 #             print("len full json array: ",len(inactive_fft_buffer_json))
             
             inactive_menu_range=inactive_menu_buffer[self.start_range_index:self.start_range_index+config.NUM_LEDS]
-            inactive_fft_buffer_ranges=inactive_fft_buffer_json[self.start_range_index:self.start_range_index+config.NUM_LEDS]
-            inactive_representations=inactive_representation_buffer[self.start_range_index:self.start_range_index+config.NUM_LEDS]
-            insactive_closest_tones=inactive_closest_tone_buffer[self.start_range_index:self.start_range_index+config.NUM_LEDS]
+            inactive_closest_tones_range=inactive_closest_tone_buffer[self.start_range_index:self.start_range_index+config.NUM_LEDS]
             
-            self.window_slice_len=len(inactive_fft_buffer_ranges)
+            self.window_slice_len=len(inactive_closest_tones_ranges)
 #             print("window_slice_Len: ",self.window_slice_len)
             window_overextension=config.NUM_LEDS-self.window_slice_len
             
             if len(inactive_fft_buffer_ranges)<config.NUM_LEDS: #and window_overextension<self.max_window_overreach:
 #                 inactive_fft_buffer_ranges = inactive_fft_buffer_ranges + [[-1,-1]] * window_overextension
                 inactive_menu_range += [-1] * (config.NUM_LEDS-len(inactive_fft_buffer_ranges))
-                inactive_fft_buffer_ranges += [[-1]] * (config.NUM_LEDS-len(inactive_fft_buffer_ranges))#this must be an array slice, or else the summation stuff later crashes!
-                inactive_representations += [[-1]] * (config.NUM_LEDS-len(inactive_fft_buffer_ranges))
-                insactive_closest_tones += [[-1]] * (config.NUM_LEDS-len(inactive_fft_buffer_ranges))
+                inactive_closest_tones_range += [[-1]] * (config.NUM_LEDS-len(inactive_fft_buffer_ranges))#this must be an array slice, or else the summation stuff later crashes!
                 
 #             print("inactive_buffer: ",inactive_fft_buffer_ranges)
             
             if inactive_buffer=='a':
                 self.menu_buffer_a=inactive_menu_range
-                self.fft_ranges_buffer_a=inactive_fft_buffer_ranges
-                self.representations_map_buffer_a=inactive_representations
-                self.closest_tones_buffer_a=insactive_closest_tones
+                self.closest_tones_buffer_a=inactive_closest_tones_range
             else:
                 self.menu_buffer_b=inactive_menu_range
-                self.fft_ranges_buffer_b=inactive_fft_buffer_ranges
-                self.representations_map_buffer_b=inactive_representations
-                self.closest_tones_buffer_b=insactive_closest_tones
+                self.closest_tones_buffer_b=inactive_closest_tones_range
             #swap buffers 'atomically'
             
             self.active_buffer='b' if self.active_buffer=='a' else 'a'
@@ -316,16 +288,12 @@ class Mic():
             
             if self.active_buffer=='a': 
                 self.menu_to_operate_with=self.menu_buffer_a
-                self.fft_ranges_to_operate_with=self.fft_ranges_buffer_a
-                self.representations_map_to_operate_with=self.representations_map_buffer_a
                 self.closest_tone_indexes_to_operate_with=self.closest_tones_buffer_a
             else:
                 self.menu_to_operate_with=self.menu_buffer_b
-                self.fft_ranges_to_operate_with=self.fft_ranges_buffer_b
-                self.representations_map_to_operate_with=self.representations_map_buffer_b
                 self.closest_tone_indexes_to_operate_with=self.closest_tones_buffer_b
             
-#             print("FFT_ranges_swap: ",self.fft_ranges_to_operate_with)
+#             print("FFT_closest_tones_swap: ",self.closest_tone_indexes_to_operate_with)
             #deactivate the update flags
             self.update_queued=False
             self.next_data_key=None
@@ -357,8 +325,7 @@ class Mic():
         t_fft_bins0=ticks_ms()
 #         print(f"after fft: {gc.mem_free()}")  
         
-        slice_sums=[]
-#         print(self.fft_ranges_to_operate_with)
+
         
         t_chroma0=ticks_ms()
         if self.mode=="determiner":
@@ -390,35 +357,20 @@ class Mic():
         if self.mode=="intensity" or self.mode=="synesthesia":
                 
             #ranges_to_operate_with is a buffer containing precomputed boundaries for the notes_per_pixel bins of interest, the buffer is updated with menuing.
-            for index, f in enumerate(self.fft_ranges_to_operate_with):
-    #             print(self.fft_ranges_to_operate_with)
+            #this has been updated to reflect the amplitude of specific tones that closely match musical notes,
+            #hopefully simplifying bleed and enabling better chord detection
+            
+            for index, f in enumerate(self.closest_tone_indexes_to_operate_with):
+    #             print(self.closest_tone_indexes_to_operate_with)
                 if f[0]>=0: #check if the bin has not been errored out with -1, e.g.: if the menu or bins are shorter than the display.
-                     
-                    #total energy of sound is more important than an average. Not sure what this will do to my log conversion.
-                    slice_sum = np.sum(magnitudes[f[0]:f[1]])
-                    slice_sums.append(slice_sum)
-                    slice_index_diff = f[1]-f[0]
-                    try:
-                        normalized_sum = slice_sum/slice_index_diff
-                        ###This sort of thing is needed for microtone representation.
-                        ## Find out where the max magnitude in the slice is, then add the starting index of the slice,
-                        ## or you'll get veeeery odd frequency curves.
-                        where_dominant_mag=np.argmax(magnitudes[f[0]:f[1]])+f[0] 
-                        dominant_mag=magnitudes[where_dominant_mag]
-                        dominant_tone=self.tones[where_dominant_mag]
-                        
-                    # Crops up if the number of notes in a bin is too few.
-                    # As in low note_per_bin cases.
-                    except Exception as e:
-                        print("Exception: ",e)
-                        #set the output to be the first value in the bin, always the first index, in this case
-                        #creates an output with padded zeros.
-                        display_value=0
-                        #set the dominant mag to be the first closes_tone to a 'real note's magnitude in the array slice, if they are all lower than the noise threshold.
-                        dominant_mag = 0
-                        #this should be the first closest /tone/ not the first halfway frequency
-                        dominant_tone = 0
-    #                     dominant_note_rep = 0
+                    
+                    
+                    #amplitude of max tone in bin
+                    dominant_mag = np.max(magnitudes[f[0]:f[-1]])
+                    ## Find out where the max magnitude in the slice is, then add the starting index of the slice,
+                    ## or you'll get veeeery odd frequency curves.
+                    where_dominant_mag=np.argmax(magnitudes[f[0]:f[-1]])+f[0]
+                    dominant_tone=self.tones[where_dominant_mag]
                         
 
                 else:
