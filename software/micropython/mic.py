@@ -69,8 +69,9 @@ class Mic():
                                 bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
                                 ibuf=I2S_SAMPLE_BYTES)
 
-        self.mode="intensity"
+        self.mode="determiner"
 #         self.mode="intensity"
+#         self.mode="synesthesia"
         
         self.status_led_off=False
         self.show_menu_in_mic=False
@@ -168,17 +169,43 @@ class Mic():
             print("Start_bin indexes:", self.indiv_note_bins) #must line up with note A for chromatic aggretation to assign tone intensity values to correct notes
             print("Tone corresponding to first index in that bin.", self.tones[self.indiv_note_bins[0][0]])
             
-        
-        self.chroma_key=np.zeros(12)
-        self.chroma_decay=0.9
-        self.aggregate_decay=0.95
-        self.aggregate_scores=np.zeros(12)
+   
+   
+   
+   
+   
+            
+        ###_determiner
+        #rotate to have C first.
+        self.notes=['c','c#','d','e♭','e','f','f#','g','a♭','a','b♭','b',]
+        self.root_position=[0,1,2,3,4,5,6,7,8,9,10,11]
+        self.frame_filtered_chroma_key=np.zeros(12)
         self.top_N_notes=4 
-#         self.masks={'Ionian':[1,0,1,0,1,1,0,1,0,1,0,1]}    
-        self.masks={'Ionian':[6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]} #Krumhansl's empirically derived weights #Sonnet 4.6    
-    
+#         self.modes={'Ionian':[1,0,1,0,1,1,0,1,0,1,0,1]}    
+        self.modes={'Ionian':[6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88], #Krumhansl's empirically derived weights #Sonnet 4.6    
+                    'Aeolian': [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17] # Claude sonnet 4.6: minor profile C-first (rotate: la=A is index 9, so shift left by 9)
+        }
+        
+        
+        
+        self.frame_scores_for_mode_and_root={"Ionian":np.zeros((12)),"Aeolian":np.zeros((12))}
+        self.column_scores={}
+        
+        self.history_frame_length=80
+        self.history_buffer_ion = np.zeros((self.history_frame_length,12))
+        self.history_buffer_aeo = np.zeros((self.history_frame_length,12))
+        self.history_buffers = {'Ionian': self.history_buffer_ion,'Aeolian': self.history_buffer_aeo}
+        self.history_buffer_pointer = 0
+
+        with open('utils/three_x_three_font.json', 'r') as f:
+            self.font = json.load(f)
 
 
+
+
+
+
+        ###_BUFFERS_###
         #create buffer pointers
         self.active_buffer='a'
         self.menu_to_operate_with=self.menu_buffer_a
@@ -188,6 +215,11 @@ class Mic():
         self.update_queued=False
         self.next_data_key=None        
         
+        
+        
+        
+        
+        #led value handling stuff
         self.length_of_leds=13 #actually needs to be number of leds+1, due to how the note border finding/zipping function organizes borders
         self.ring_buffer_hues=np.zeros((3,self.length_of_leds-1))
         self.ring_buffer_intensities=np.zeros((3,self.length_of_leds-1))
@@ -264,11 +296,11 @@ class Mic():
             inactive_menu_range=inactive_menu_buffer[self.start_range_index:self.start_range_index+config.NUM_LEDS]
             inactive_closest_tones_range=inactive_closest_tone_buffer[self.start_range_index:self.start_range_index+config.NUM_LEDS]
             
-            self.window_slice_len=len(inactive_closest_tones_ranges)
+            self.window_slice_len=len(inactive_closest_tones_range)
 #             print("window_slice_Len: ",self.window_slice_len)
             window_overextension=config.NUM_LEDS-self.window_slice_len
             
-            if len(inactive_fft_buffer_ranges)<config.NUM_LEDS: #and window_overextension<self.max_window_overreach:
+            if len(inactive_menu_buffer)<config.NUM_LEDS: #and window_overextension<self.max_window_overreach:
 #                 inactive_fft_buffer_ranges = inactive_fft_buffer_ranges + [[-1,-1]] * window_overextension
                 inactive_menu_range += [-1] * (config.NUM_LEDS-len(inactive_fft_buffer_ranges))
                 inactive_closest_tones_range += [[-1]] * (config.NUM_LEDS-len(inactive_fft_buffer_ranges))#this must be an array slice, or else the summation stuff later crashes!
@@ -330,15 +362,18 @@ class Mic():
         t_chroma0=ticks_ms()
         if self.mode=="determiner":
 #             print("building chromakey")
-            self.chroma_key*=self.chroma_decay
             frame_chroma_key=np.zeros(12)
             
+            #have to reverence the first list inside the indiv_note_bins, as it is the lowest set of note lists, unlike
+            #other note per pixel settings, there is only one entry per sub list for "1" note per pixel
             for index, note in enumerate(self.indiv_note_bins):
-                #hardcoded wrap around for 12 notes in western music
-                #don't need to db scale this, just need raw amp?
-                hardcoded_scale=1000
+                #scale/wight lower notes so they contribute more to the harmonic determination
+                weight=300 if index <	24 else 1000
                 #add new signal from fft for each bin
-                frame_chroma_key[index%12] = (np.max(magnitudes[note[0]:note[1]])/hardcoded_scale) 
+                #hardcoded wrap around for 12 notes in western music
+                frame_chroma_key[index%12] += (magnitudes[note[0]]/weight) 
+            
+#             print(list(frame_chroma_key))
             
             threshold=np.sort(frame_chroma_key)[-self.top_N_notes]
             filtered_chroma_key=np.array([v if v>=threshold else 0.0 for v in frame_chroma_key])
@@ -347,7 +382,7 @@ class Mic():
 #             print("sorted_key:", list(np.sort(frame_chroma_key)))
 #             print("filtered_key:", list(filtered_chroma_key))
             
-            self.chroma_key+=filtered_chroma_key
+            self.frame_filtered_chroma_key=filtered_chroma_key
 #             print("chromakey:",self.chroma_key)
             t_chroma1=ticks_ms()
 #             print("ticks_chroma:",ticks_diff(t_chroma1,t_chroma0))
@@ -526,54 +561,123 @@ class Mic():
             tfft3=ticks_ms()
 #             print("FFT: ", ticks_diff(tfft2, tfft1)) #42-77     
             
-            
+              
             
             
             t_determiner0=ticks_ms()
             #some code may repeat in here for the sake of cleaness. There are alot of print statements for debug
             
             if self.mode=="determiner":
-                self.aggregate_scores*=self.aggregate_decay
-                #score each possible set against the chromakey generated in the fft_and_bin, rotate to have C first.
-                notes=['c','c#/db','d','d#/eb','e','f','f#/gb','g','g#/ab','a','a#/bb','b',]
-                root_position=[0,1,2,3,4,5,6,7,8,9,10,11]
-                frame_scores=np.zeros(12)
-                mask=self.masks['Ionian']
-#                 print(mask)
-                for index,note in enumerate(notes):
-#                     print('Scoring: ', notes[index])
-                    #sonnet 4.6's idea
-#                     current_scale=['','','','','','','','','','','',''] #just making things explicate for checking
-                    for i in range(12):
-#                         if mask[i]==1: current_scale[i]=notes[(i + root_position[index]) % 12] 
-                        frame_scores[index] += self.chroma_key[i] * mask[(i - root_position[index]) % 12]
+                #to keep consistent pattern, make a dict for the summed buffer that is later used to find the dominant match
+                summed_frame_buffer_score={}
                 
-                self.aggregate_scores+=frame_scores
+                #score each possible set against the chromakey generated in the fft_and_bin,
+                for mode in self.modes:
+                    #mutate in place to clear the scores
+                    scores = self.frame_scores_for_mode_and_root[mode]
+                    for i in range(len(scores)):
+                        scores[i] = 0.
+                        
+                    for index,root_note in enumerate(self.notes):
+                        #sonnet 4.6's idea
+                        #for each root, score the appearance of notes
+                        for i in range(12):
+    #                         if mask[i]==1: current_scale[i]=notes[(i + root_position[index]) % 12] 
+                            
+                            #Turn the filtered key into a score for each root for each mode
+                            krumhansl_weight=self.modes[mode][(i - self.root_position[index]) % 12]
+                            chroma_key_weight=self.frame_filtered_chroma_key[i]
+                            self.frame_scores_for_mode_and_root[mode][index] += krumhansl_weight*chroma_key_weight 
+                    
+                    #add weighted keys into history buffer
+                    self.history_buffers[mode][self.history_buffer_pointer]=self.frame_scores_for_mode_and_root[mode]
+                    #update history buffer index/pointer
+                    self.history_buffer_pointer+=1
+                    self.history_buffer_pointer%=self.history_frame_length
                 
-                #print to check how notes register/decay in chromakey
+                #print summed buffer along column for best fit of keys, should show best match filling buffer for sustained chord
+                    summed_frame_buffer_score['Ionian']=np.sum(self.history_buffers['Ionian'],axis=0)
+                    summed_frame_buffer_score['Aeolian']=np.sum(self.history_buffers['Aeolian'],axis=0)
 #                 args = []
-#                 for note, key in zip(notes, list(self.chroma_key)):
+#                 for note, key in zip(self.notes, list(a)):
 #                     args += [note, key]
 #                 print(*args)
                 
-                #print to check how scores register/decay in Scores
-#                 args = []
-#                 for note, score in zip(notes, list(self.aggregate_scores)):
-#                     args += [note, score]
-#                 print(*args)
                 
+                #take the top (two?) framescore and display, parsing to see if a "flat/sharp"symbol is required.
+                num_top_results_to_display=2
+                top_indices = {}
+                max_score=0
+                top_mode='Ionian'
+                top_note_string='a'
+                for mode in self.modes:
+                    top_indices[mode]=[]
+                    temp_scores=list(summed_frame_buffer_score[mode])
+                    for _ in range(num_top_results_to_display):
+                        best=np.argmax(temp_scores)
+                        top_indices[mode].append(best)
+                        temp_scores[best]=-1
+                    
+                    max_index=top_indices[mode][0]
+                    mode_max=summed_frame_buffer_score[mode][max_index]
+                    if mode_max > max_score:
+                        max_score = mode_max
+                        top_note_string=self.notes[max_index]
+                        top_mode=mode
+                    
+                    
+                #some zipping for printing/checking
                 args=[]
-                top3_indices = []
-                temp_scores=list(self.aggregate_scores)
-                for _ in range(3):
-                    best=np.argmax(temp_scores)
-                    top3_indices.append(best)
-                    temp_scores[best]=-1
-                for i in top3_indices:
-                    args+=[notes[i], self.aggregate_scores[i]]
+                for mode in self.modes:
+                    for i in top_indices[mode]:
+                        args+=[mode, self.notes[i], summed_frame_buffer_score[mode][i]]
                 print(*args)
-#                 print("best guess (major only for now):", notes[np.argmax(scores)])
-#                 print(scores)
+#                 print("best guess (major only for now):", self.notes[np.argmax(summed_frame_buffer_score)])
+#                 print(list(summed_frame_buffer_score))
+
+                
+                #find top of tops
+                #display top, with some fading in the future
+#                 #build Led info strings
+#                 top_top={}
+#                 top_indices
+#                 top=self.notes[top_indices[0]]
+                
+                accent= '#' if '#' in top_note_string else '♭' if '♭' in top_note_string else '-'
+                #strip out the accent, as otherwise there is a key error (I didn't just write in sharps and flats in the font \
+                #as I found it cleaner to have 3x3,1x3,and3x3 for the different info bits
+                top=top_note_string[0]
+                
+                _0=self.font[top][0]+self.font[accent][0]+self.font[top_mode][0]
+                _1=self.font[top][1]+self.font[accent][1]+self.font[top_mode][1]
+                _2=self.font[top][2]+self.font[accent][2]+self.font[top_mode][2]
+#                 print(_0)
+                
+                #have to translate font into rgb values, assign once per display element/section
+                note_col=tuple(c*self.brightness//255 for c in (255,0,0))
+                accent_col=tuple(c*self.brightness//255 for c in (0,255,0))
+                mode_col=tuple(c*self.brightness//255 for c in (0,0,255))
+                
+                comp=[_0,_1,_2]
+                
+                
+                for i,bits in enumerate(comp):
+                     comp[i] = [note_col if b else (0,0,0) for b in bits[0:3]] + \
+                           [accent_col if b else (0,0,0) for b in bits[3:4]] + \
+                           [mode_col if b else (0,0,0) for b in bits[4:7]]
+#                 print(comp)
+                
+                #write to LEDs
+                for i in range(config.NUM_LEDS):
+                    await leds.show_rgb(0,i,comp[0][i])
+                    await leds.show_rgb(1,i,comp[1][i])
+                    await leds.show_rgb(2,i,comp[2][i])
+                
+                await leds.write(0) 
+                await leds.write(1)
+                await leds.write(2)
+                                                                               
+                
             t_determiner1=ticks_ms()
             
             
