@@ -1,6 +1,6 @@
 #claude gave me this to start with
 import json
-from utils.border_calculator import PrecomputedValues
+from utils.border_calculator import PrecomputedBorders
 
 class PrecomputedMenu:
     def __init__(self, filename):
@@ -9,7 +9,7 @@ class PrecomputedMenu:
         
         self.notes_per_led_options=[1,2,3,4,6,12]
         #get the corresponsing lengths of the corresponding FFT resolution windows
-        self.precomputed_borders=PrecomputedValues("utils/test_speedup_redo_values.json")
+        self.precomputed_borders=PrecomputedBorders("utils/test_speedup_redo_values.json")
         self.precomputed_borders.load()
         self.fft_bin_lengths={}
         
