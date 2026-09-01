@@ -1,5 +1,13 @@
 TEST='test'
 
+# 512 in the FFT 16000/512 ~ 30Hz update.
+# DMA buffer should be at least twice, rounded to power of two.
+SAMPLE_RATE = 8000 # Hz
+SAMPLE_SIZE = 16
+SAMPLE_COUNT = 4096 #8192 #
+I2S_SAMPLE_COUNT = 512
+
+
 FLIP_DISPLAY=True #NOT IMPLIMENTED, LOL #True: high freqencies on left, low on the right - False: vice versa
 
 #presets:

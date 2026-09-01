@@ -6,8 +6,9 @@ import json
 import math
 import asyncio
 from leds import Leds
+from audio_sampler import AudioSampler
+from fft import Fft
 from ulab import numpy as np
-from machine import Pin, I2S
 from time import ticks_ms, ticks_diff
 from utils.closest_tone_calculator import PrecomputedClosestTones
 from utils.menu_calculator import PrecomputedMenu
@@ -15,62 +16,28 @@ from utils.menu_calculator import PrecomputedMenu
 # import gc
 # gc.collect()
 
-# 512 in the FFT 16000/512 ~ 30Hz update.
-# DMA buffer should be at least twice, rounded to power of two.
-SAMPLE_RATE = 8000 # Hz
-SAMPLE_SIZE = 16
-SAMPLE_COUNT = 4096 #8192 #
-FREQUENCY_RESOLUTION=SAMPLE_RATE/SAMPLE_COUNT
+FREQUENCY_RESOLUTION=config.SAMPLE_RATE/config.SAMPLE_COUNT
 TUNING_A4_HZ=440.
 BINS_PER_OCTAVE=2
 
-# Size of the I2S DMA buffer, the smaller this is then the
-# faster each loop iteration can update the LEDs
-I2S_SAMPLE_COUNT = 512
-
-I2S_SAMPLE_BYTES = I2S_SAMPLE_COUNT * SAMPLE_SIZE // 8
-
-# Code below assumes the I2S buffer size is an exact multiple of the sample count
-assert(SAMPLE_COUNT % I2S_SAMPLE_COUNT == 0)
-
-# Tuning:
-#
-# - The smaller SAMPLE_COUNT is then the more quickly responsive the LEDs will
-#   be. Limit will be a minimum buffer size before the FFT results don't work
-#   (TODO: calculate this?)
-#
-# - The smaller I2S_SAMPLE_COUNT then the higher the update rate for the LEDs so
-#   they'll look less jittery. Limit will be a minimum where the CPU can't
-#   keep up (because need to perform FFT on full SAMPLE_COUNT for each iteration.)
-
-samples = np.zeros(SAMPLE_COUNT, dtype=np.int16)
-#claude sonnet says this is a big issue #sample_bytearray = samples.tobytes()  # bytearray points to the sample samples array
-sample_bytearray=samples.tobytes()
-scratchpad = np.zeros(2 * SAMPLE_COUNT) # re-usable RAM for the calculation of the FFT
-                                        # avoids memory fragmentation and thus OOM errors
-
-magnitudes=np.zeros(SAMPLE_COUNT, dtype=np.float) #this is the result from the FFT
-
-#finally time for the Hann window, like a year and a half later:
-window = np.array([0.5 - 0.5 * np.cos(2 * np.pi * i / (SAMPLE_COUNT - 1)) for i in range(SAMPLE_COUNT)])
-
 V_ref=8388607 #this value is microphone dependant, for the DFROBOT mic, which is 24-bit I2S audio, that value is apparently 8,388,607 
 
-ID = 0 #I2S identity
-SD = Pin(config.SD)
-SCK = Pin(config.SCK)
-WS = Pin(config.WS)
+magnitudes=np.zeros(config.SAMPLE_COUNT, dtype=np.float) #this is the result from the FFT
 
 class Mic():
     def __init__(self,watchdog):
-        self.watchdog=watchdog
+        self.watchdog=watchdog      
         
-        self.microphone = I2S(ID, sck=SCK, ws=WS, sd=SD, mode=I2S.RX,
-                                bits=SAMPLE_SIZE, format=I2S.MONO, rate=SAMPLE_RATE,
-                                ibuf=I2S_SAMPLE_BYTES)
-
-        self.mode="determiner"
-#         self.mode="intensity"
+        self.sampler=AudioSampler()
+        
+        self.fft=Fft()
+        
+#         like this?? self.led_renderer=LedRender()
+        
+        self.menu_bar=MenuBar()
+        
+#         self.mode="determiner"
+        self.mode="intensity"
 #         self.mode="synesthesia"
         
         self.status_led_off=False
@@ -89,7 +56,7 @@ class Mic():
         self.auto_low_control=False
         
         # Figure out what tones correspond to what magnitudes out of the fft, with respect to the mic sampling parameters
-        self.tones=FREQUENCY_RESOLUTION*np.arange(SAMPLE_COUNT/2)
+        self.tones=FREQUENCY_RESOLUTION*np.arange(config.SAMPLE_COUNT/2)
         
         #determines the values that are actually accounted for in display colour scaling
         self.scale_and_clip_db_range=np.array([self.low_db_set_point, self.highest_db_on_record]) #for colouring: values chosen by looking at my spectrogram. I think a value of zero is a shockwave.
@@ -332,32 +299,8 @@ class Mic():
             
 
 #             await uasyncio.sleep_ms(0)  # Yield to other tasks
-            
 
-
-
-
-
-
-    async def fft_and_bin(self, samples):
-        #magnitudes = utils.spectrogram(samples, scratchpad=scratchpad)#, log=True) #scratchpad worsens overall performance.
-        
-        #This is the fft, speed determined by the size of the samples, which must be a length of a power of two.
-        t_spectro_isolate_0=ticks_ms()
-        
-        #apply Hann window
-        windowed_samples = samples * window
-        magnitudes = utils.spectrogram(windowed_samples)
-        
-#         magnitudes=utils.spectrogram(samples) #non windowed
-        t_spectro_isolate_1=ticks_ms()
-        
-        #print("FFT_testing_isolated: ", ticks_diff(t_spectro_isolate_1, t_spectro_isolate_0))
-
-        t_fft_bins0=ticks_ms()
-#         print(f"after fft: {gc.mem_free()}")  
-        
-
+    async def bin_fft(self, magnitudes):
         
         t_chroma0=ticks_ms()
         if self.mode=="determiner":
@@ -368,7 +311,7 @@ class Mic():
             #other note per pixel settings, there is only one entry per sub list for "1" note per pixel
             for index, note in enumerate(self.indiv_note_bins):
                 #scale/wight lower notes so they contribute more to the harmonic determination
-                weight=300 if index <	24 else 1000
+                weight=300 if index < 24 else 1000
                 #add new signal from fft for each bin
                 #hardcoded wrap around for 12 notes in western music
                 frame_chroma_key[index%12] += (magnitudes[note[0]]/weight) 
@@ -436,79 +379,20 @@ class Mic():
         
         return
 
-
-
-
-
-
     async def start(self):
         leds = Leds()
-        flag = asyncio.ThreadSafeFlag()
 
-        # Define the callback for the IRQ that sets the flag
-        def irq_handler(noop):
-            flag.set()
-
-        # Attach the IRQ handler
-        self.microphone.irq(irq_handler)
-
-
-        sample_view = memoryview(sample_bytearray)  # save an allocation by reusing this
-        n_slice = 0
-
-        # Discard initial garbage, also need to do an initial read so IRQ starts triggering
-        self.microphone.readinto(sample_bytearray)
 
         t_mic_sample = None
         while True:
             self.watchdog.heartbeat('Mic, FFT,and Colour')
             t_awaiting = ticks_ms()
 
-            await flag.wait()
-            
-#             print(f"Before I2S: {gc.mem_free()}")
-            t_mic_sample = ticks_ms()
-            # this number should be non-zero, so the other coros can run. but if it's large
-            # then can probably tune the buffer sizes to get more responsiveness
-#             print("time spent awaiting: ", ticks_diff(t_mic_sample, t_awaiting)) #0-17ms
-            t0 = ticks_ms()
-
-            # Set up a slice into I2S_SAMPLE_COUNT samples of the 'samples'
-            # array, viewed as an unstructured bytearray
-            start_idx = n_slice * I2S_SAMPLE_BYTES
-            end_idx = start_idx + I2S_SAMPLE_BYTES
-            read_slice = sample_view[start_idx:end_idx]
-
-            # Read I2S samples into just this slice of bytes
-            num_read = self.microphone.readinto(read_slice) # 1ms !
-
-            assert(num_read == I2S_SAMPLE_BYTES)  # if not true then need to be a bit more tricky about measuring slices
-
-            # Increment for the next rolling chunk of samples
-            n_slice += 1
-            if n_slice * I2S_SAMPLE_COUNT == SAMPLE_COUNT:
-                n_slice = 0
-                samples[:]=np.frombuffer(sample_bytearray,dtype=np.int16)
-#             print(f"after I2S: {gc.mem_free()}")  
+            samples = await self.sampler.sample()
+            magnitudes = await self.fft.crunch(samples)
                 
-            t1=ticks_ms()
-            # Perform FFT over the entire 'samples' buffer, not just the small I2S_SAMPLE_COUNT chunk of it
-            # calculate fft_mag from samples
-            tfft1=ticks_ms()
-            #fft_mags,dominants,reps =
-            await self.fft_and_bin(samples)
-            tfft2=ticks_ms()        
+            await self.bin_fft(magnitudes)
 
-
-#             tfft3=ticks_ms()
-#             print("FFT_testing_scratchpad: ", ticks_diff(tfft2, tfft1))
-            
-            # FFTscaling only the fft_mags_array, when quiet, the maximum ambient noise dynamically becomes bright, which is distracting.
-            # We need to make noise an ambient low level of intensity
-             
-            
-#             print(f"after scaling to db range: {gc.mem_free()}")
-            
             
             #auto gain control
             self.last_loudest_reading=max(self.db_scaling)
@@ -810,7 +694,7 @@ class Mic():
             
             
             
-            
+            self.led_render.show_menu(self)
             
             
             tmenu1=ticks_ms()

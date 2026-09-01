@@ -10,7 +10,7 @@ class Menu:
         self.state_changed=False
         self.menu_pix=[[],[],[],[],[],[],[],[],[],[],[],[]]#12 values to fill.
         
-        self.main_modes=["intensity","synesthesia"]
+        self.main_modes=["intensity","synesthesia","determiner"]
         self.main_mode_index=0
         self.main_mode=self.main_modes[self.main_mode_index]
         
@@ -86,17 +86,6 @@ class Menu:
                         
     async def update_value(self, direction):
         if self.sub_mode=="brightness":
-#             current_time=ticks_ms()
-#             button_held=ticks_diff(current_time,self.start_time,)
-#             print('button held (ms): ',button_held)
-#             if button_held <= 1000:
-#                 brightness_step=1
-#             elif 1000 < button_held <= 2000:
-#                 brightness_step=10
-#             elif 2000 < button_held:
-#                 brightness_step=20
-#             print('Brightness step: ',brightness_step)
-            
             if direction=="+":
                 self.mic.show_menu_in_mic=True
                 self.mic.menu_update_required=True
